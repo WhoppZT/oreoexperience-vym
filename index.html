@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#3b2e7e" />
+    <meta name="description" content="Asignaciones semanales de la reunión Vida y Ministerio Cristianos" />
+    <title>Asignaciones - Vida y Ministerio</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <h1 class="site-title">Asignaciones de la Semana</h1>
+        <p class="site-subtitle">Reunión Vida y Ministerio Cristianos</p>
+        <p class="header-badge">Hecho por <strong>OreoExperience</strong> · <strong>Elihu Rueda</strong></p>
+      </div>
+      <button id="admin-open-btn" class="admin-open-btn" type="button" aria-label="Abrir panel de administrador">
+        Administrador
+      </button>
+    </header>
+
+    <main class="container">
+      <section id="status-bar" class="status-bar" aria-live="polite"></section>
+
+      <section id="week-display" class="week-display" aria-live="polite">
+        <div id="empty-state" class="empty-state" hidden>
+          <h2>No hay asignaciones cargadas</h2>
+          <p>
+            Por favor pídale al administrador que suba el PDF con las asignaciones desde el botón
+            <strong>"Administrador"</strong>.
+          </p>
+        </div>
+
+        <div id="waiting-state" class="waiting-state" hidden>
+          <h2>En espera de actualización</h2>
+          <p>Las asignaciones cargadas ya terminaron.</p>
+          <p>Por favor pídale al administrador que cargue el PDF nuevo.</p>
+        </div>
+
+        <article id="week-card" class="week-card" hidden>
+          <div class="week-header">
+            <p id="week-label" class="week-label"></p>
+            <h2 id="week-title" class="week-title"></h2>
+            <p id="week-bible" class="week-bible"></p>
+            <p id="week-meta" class="week-meta"></p>
+          </div>
+
+          <div id="week-sections" class="week-sections"></div>
+        </article>
+
+        <nav id="week-nav" class="week-nav" hidden>
+          <button id="prev-week-btn" class="nav-btn" type="button">◀ Semana anterior</button>
+          <span id="week-position" class="week-position"></span>
+          <button id="next-week-btn" class="nav-btn" type="button">Semana siguiente ▶</button>
+        </nav>
+      </section>
+
+      <section id="install-prompt" class="install-prompt" hidden>
+        <p>
+          Puede instalar esta página como una aplicación en su dispositivo para usarla sin internet.
+        </p>
+        <button id="install-btn" class="primary-btn" type="button">Instalar aplicación</button>
+        <button id="install-dismiss-btn" class="ghost-btn" type="button">Después</button>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p id="footer-info"></p>
+      <p class="site-footer-credit">
+        Hecho por
+        <a
+          class="oreo-brand"
+          href="https://github.com/WhoppZT/OreoExperience-Notes"
+          target="_blank"
+          rel="noopener noreferrer"
+        >OreoExperience</a>
+        · <span class="site-footer-author">Elihu Rueda</span>
+      </p>
+      <p class="site-footer-version">Versión sin conexión disponible · v13</p>
+    </footer>
+
+    <!-- Admin modal -->
+    <div id="admin-modal" class="modal" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-content" role="document">
+        <header class="modal-header">
+          <h2 id="admin-modal-title">Panel de administrador</h2>
+          <button class="modal-close" data-close-modal aria-label="Cerrar">×</button>
+        </header>
+
+        <div id="admin-login-section" class="modal-body">
+          <p>Ingrese sus credenciales para administrar las asignaciones.</p>
+          <form id="admin-login-form" autocomplete="off">
+            <label for="admin-username">Correo electrónico</label>
+            <input id="admin-username" name="username" type="email" required autocomplete="username" inputmode="email" />
+
+            <label for="admin-password">Contraseña</label>
+            <input id="admin-password" name="password" type="password" required autocomplete="current-password" />
+
+            <p id="admin-login-error" class="form-error" hidden></p>
+
+            <button type="submit" class="primary-btn">Entrar</button>
+          </form>
+        </div>
+
+        <div id="admin-panel-section" class="modal-body" hidden>
+          <p>Bienvenido. Suba aquí el PDF con las asignaciones semanales.</p>
+
+          <form id="upload-form">
+            <label for="pdf-file" class="file-label">
+              <span>Seleccione el archivo PDF</span>
+              <input id="pdf-file" type="file" accept="application/pdf" required />
+            </label>
+
+            <label for="pdf-year">Año (opcional, se detecta automáticamente del archivo)</label>
+            <input id="pdf-year" type="number" min="2000" max="2100" placeholder="Ej: 2026" />
+
+            <p id="upload-status" class="upload-status" hidden></p>
+            <p id="upload-error" class="form-error" hidden></p>
+
+            <div class="form-actions">
+              <button type="submit" class="primary-btn">Procesar y guardar</button>
+              <button id="clear-data-btn" type="button" class="danger-btn">Borrar datos guardados</button>
+              <button id="admin-logout-btn" type="button" class="ghost-btn">Salir</button>
+            </div>
+          </form>
+
+          <div id="weeks-summary" class="weeks-summary" hidden>
+            <h3>Semanas detectadas</h3>
+            <ul id="weeks-list"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>

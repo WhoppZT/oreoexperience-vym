@@ -1,0 +1,12 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Public read of the parsed weekly assignments. Only an authenticated
+    // admin can write.
+    match /assignments/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+  }
+}
