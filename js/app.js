@@ -442,6 +442,17 @@ function registerServiceWorker() {
     window.addEventListener('load', () => {
       navigator.serviceWorker
         .register('./service-worker.js', { scope: './' })
+        .then((registration) => {
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
+                window.location.reload();
+              }
+            });
+          });
+        })
         .catch((err) => console.warn('SW registration failed:', err));
     });
   }
