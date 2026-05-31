@@ -23,41 +23,136 @@
       </button>
     </header>
 
+    <nav id="section-tabs" class="section-tabs">
+      <button class="tab-btn active" data-tab="asignaciones" type="button">Asignaciones</button>
+      <button class="tab-btn" data-tab="acomodadores" type="button">Acomodadores</button>
+    </nav>
+
     <main class="container">
       <section id="status-bar" class="status-bar" aria-live="polite"></section>
 
-      <section id="week-display" class="week-display" aria-live="polite">
-        <div id="empty-state" class="empty-state" hidden>
-          <h2>No hay asignaciones cargadas</h2>
-          <p>
-            Por favor pídale al administrador que suba el PDF con las asignaciones desde el botón
-            <strong>"Administrador"</strong>.
-          </p>
-        </div>
-
-        <div id="waiting-state" class="waiting-state" hidden>
-          <h2>En espera de actualización</h2>
-          <p>Las asignaciones cargadas ya terminaron.</p>
-          <p>Por favor pídale al administrador que cargue el PDF nuevo.</p>
-        </div>
-
-        <article id="week-card" class="week-card" hidden>
-          <div class="week-header">
-            <p id="week-label" class="week-label"></p>
-            <h2 id="week-title" class="week-title"></h2>
-            <p id="week-bible" class="week-bible"></p>
-            <p id="week-meta" class="week-meta"></p>
+      <!-- Pestaña Asignaciones -->
+      <div id="tab-asignaciones" class="tab-content active">
+        <section id="week-display" class="week-display" aria-live="polite">
+          <div id="empty-state" class="empty-state" hidden>
+            <h2>No hay asignaciones cargadas</h2>
+            <p>
+              Por favor pídale al administrador que suba el PDF con las asignaciones desde el botón
+              <strong>"Administrador"</strong>.
+            </p>
           </div>
 
-          <div id="week-sections" class="week-sections"></div>
-        </article>
+          <div id="waiting-state" class="waiting-state" hidden>
+            <h2>En espera de actualización</h2>
+            <p>Las asignaciones cargadas ya terminaron.</p>
+            <p>Por favor pídale al administrador que cargue el PDF nuevo.</p>
+          </div>
 
-        <nav id="week-nav" class="week-nav" hidden>
-          <button id="prev-week-btn" class="nav-btn" type="button">◀ Semana anterior</button>
-          <span id="week-position" class="week-position"></span>
-          <button id="next-week-btn" class="nav-btn" type="button">Semana siguiente ▶</button>
-        </nav>
-      </section>
+          <article id="week-card" class="week-card" hidden>
+            <div class="week-header">
+              <p id="week-label" class="week-label"></p>
+              <h2 id="week-title" class="week-title"></h2>
+              <p id="week-bible" class="week-bible"></p>
+              <p id="week-meta" class="week-meta"></p>
+            </div>
+
+            <div id="week-sections" class="week-sections"></div>
+          </article>
+
+          <nav id="week-nav" class="week-nav" hidden>
+            <button id="prev-week-btn" class="nav-btn" type="button">◀ Semana anterior</button>
+            <span id="week-position" class="week-position"></span>
+            <button id="next-week-btn" class="nav-btn" type="button">Semana siguiente ▶</button>
+          </nav>
+        </section>
+      </div>
+
+      <!-- Pestaña Acomodadores -->
+      <div id="tab-acomodadores" class="tab-content" hidden>
+        <section class="acomodadores-section">
+          <div class="acomodadores-card">
+            <div class="acomodadores-header acomodadores-ac">
+              <h2>Acomodadores</h2>
+            </div>
+            <div class="acomodadores-body">
+              <table class="acomodadores-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Parqueadero</th>
+                    <th>Entrada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>30 DE MAYO SABADO</td><td>JUAN C. JAIMES</td><td>RAMIRO ANDRES</td></tr>
+                  <tr><td>03 DE JUNIO MIERCOLES</td><td>JOHN MARTINEZ</td><td>CARLOS RUEDA</td></tr>
+                  <tr><td>06 DE JUNIO SABADO</td><td>JAIRO R</td><td>ELIHU R</td></tr>
+                  <tr><td>10 DE JUNIO MIERCOLES</td><td>HECTOR SIERRA</td><td>SAMUEL DURAN</td></tr>
+                  <tr><td>13 DE JUNIO SABADO</td><td>RAMIRO ANDRES</td><td>CARLOS LEON</td></tr>
+                  <tr><td>17 DE JUNIO MIERCOLES</td><td>ELIHU RUEDA</td><td>WILMER DURAN</td></tr>
+                  <tr><td>20 DE JUNIO SABADO</td><td>CESAR ATAY</td><td>JAIRO R</td></tr>
+                  <tr><td>24 DE JUNIO MIERCOLES</td><td>CARLOS RUEDA</td><td>ALBERTO T</td></tr>
+                  <tr><td>27 DE JUNIO SABADO</td><td>RAMIRO ANDRES</td><td>MAURICIO P</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="acomodadores-card">
+            <div class="acomodadores-header acomodadores-mic">
+              <h2>Microfonos</h2>
+            </div>
+            <div class="acomodadores-body">
+              <table class="acomodadores-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Asignado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>30 DE MAYO SABADO</td><td>SAMUEL DURAN - CARLOS RUEDA</td></tr>
+                  <tr><td>03 DE JUNIO MIERCOLES</td><td>PEDRO D - JHON MARTINEZ</td></tr>
+                  <tr><td>06 DE JUNIO SABADO</td><td>WILMER D - ANDRES LOPEZ</td></tr>
+                  <tr><td>10 DE JUNIO MIERCOLES</td><td>ELIHU R - JESUS MARCILLO</td></tr>
+                  <tr><td>13 DE JUNIO SABADO</td><td>HECTOR S - JUAN C JAIMES</td></tr>
+                  <tr><td>17 DE JUNIO MIERCOLES</td><td>RAMIRO A - JAIRO RAMIREZ</td></tr>
+                  <tr><td>20 DE JUNIO SABADO</td><td>CARLOS R - RAMIRO A</td></tr>
+                  <tr><td>24 DE JUNIO MIERCOLES</td><td>RAMIRO R - MAURICIO P</td></tr>
+                  <tr><td>27 DE JUNIO SABADO</td><td>SAMUEL DURAN - CESAR ATAY</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="acomodadores-card">
+            <div class="acomodadores-header acomodadores-plat">
+              <h2>Plataforma</h2>
+            </div>
+            <div class="acomodadores-body">
+              <table class="acomodadores-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Asignado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>30 DE MAYO SABADO</td><td>JOHN MARTINEZ</td></tr>
+                  <tr><td>03 DE JUNIO MIERCOLES</td><td>WILMER DURAN</td></tr>
+                  <tr><td>06 DE JUNIO SABADO</td><td>RAMIRO RINCON</td></tr>
+                  <tr><td>10 DE JUNIO MIERCOLES</td><td>HECTOR SIERRA</td></tr>
+                  <tr><td>13 DE JUNIO SABADO</td><td>PEDRO DUARTE</td></tr>
+                  <tr><td>17 DE JUNIO MIERCOLES</td><td>ANDRES LOPEZ</td></tr>
+                  <tr><td>20 DE JUNIO SABADO</td><td>ELIHU RUEDA</td></tr>
+                  <tr><td>24 DE JUNIO MIERCOLES</td><td>JHON MARTINEZ</td></tr>
+                  <tr><td>27 DE JUNIO SABADO</td><td>JESUS MARCILLO</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </div>
 
       <section id="install-prompt" class="install-prompt" hidden>
         <p>

@@ -80,6 +80,21 @@ function attachListeners() {
 
   dom.prevBtn.addEventListener('click', () => navigate(-1));
   dom.nextBtn.addEventListener('click', () => navigate(+1));
+
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+}
+
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.tab === tabId);
+  });
+  document.querySelectorAll('.tab-content').forEach((content) => {
+    const isActive = content.id === `tab-${tabId}`;
+    content.hidden = !isActive;
+    content.classList.toggle('active', isActive);
+  });
 }
 
 function openAdminModal() {
