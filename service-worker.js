@@ -1,6 +1,6 @@
 // Simple offline cache for the Asignaciones Vida y Ministerio PWA.
 
-const CACHE_VERSION = 'v15';
+const CACHE_VERSION = 'v16';
 const CACHE_NAME = `asignaciones-vym-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -44,9 +44,23 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
 
-  // Only handle same-origin requests; let cross-origin go straight to the network.
   if (url.origin !== self.location.origin) return;
 
+  // Network-first for HTML (always fresh)
+  if (request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() => caches.match(request).then((c) => c || caches.match('./index.html'))),
+    );
+    return;
+  }
+
+  // Cache-first for everything else (styles, scripts, images)
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
@@ -58,13 +72,7 @@ self.addEventListener('fetch', (event) => {
           }
           return response;
         })
-        .catch(() => {
-          // Offline fallback for navigations
-          if (request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-          return new Response('', { status: 504, statusText: 'Offline' });
-        });
+        .catch(() => new Response('', { status: 504, statusText: 'Offline' }));
     }),
   );
 });
