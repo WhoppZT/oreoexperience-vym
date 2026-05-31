@@ -114,6 +114,12 @@ function attachListeners() {
   // Acomodadores upload
   dom.acomodadoresUploadForm.addEventListener('submit', onAcomodadoresUpload);
   dom.acomodadoresClearBtn.addEventListener('click', onAcomodadoresClear);
+
+  // Refresh button
+  const refreshBtn = document.getElementById('refresh-btn');
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', forceRefresh);
+  }
 }
 
 function switchTab(tabId) {
@@ -135,6 +141,27 @@ function switchAdminTab(tabId) {
   dom.adminTabAsignaciones.classList.toggle('active', tabId === 'asignaciones');
   dom.adminTabAcomodadores.hidden = tabId !== 'acomodadores';
   dom.adminTabAcomodadores.classList.toggle('active', tabId === 'acomodadores');
+}
+
+async function forceRefresh() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) btn.classList.add('spinning');
+
+  if ('serviceWorker' in navigator) {
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) {
+      await reg.unregister();
+    }
+  }
+
+  if ('caches' in window) {
+    const names = await caches.keys();
+    for (const name of names) {
+      await caches.delete(name);
+    }
+  }
+
+  window.location.reload();
 }
 
 function compressImage(file, maxWidth = 1200, quality = 0.7) {
