@@ -1,6 +1,6 @@
 // Simple offline cache for the Asignaciones Vida y Ministerio PWA.
 
-const CACHE_VERSION = 'v17';
+const CACHE_VERSION = 'v18';
 const CACHE_NAME = `asignaciones-vym-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -46,8 +46,8 @@ self.addEventListener('fetch', (event) => {
 
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML (always fresh)
-  if (request.headers.get('accept')?.includes('text/html')) {
+  // Network-first for HTML and CSS (always fresh)
+  if (request.headers.get('accept')?.includes('text/html') || url.pathname.endsWith('.css')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
@@ -55,7 +55,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
           return response;
         })
-        .catch(() => caches.match(request).then((c) => c || caches.match('./index.html'))),
+        .catch(() => caches.match(request).then((c) => c || new Response('', { status: 504 }))),
     );
     return;
   }
