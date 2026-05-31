@@ -201,3 +201,41 @@ export async function clearAll() {
 // version of the module.
 export const savePdfBlob = savePdfBlobLocal;
 export const loadPdfBlob = loadPdfBlobLocal;
+
+// ---------------------- acomodadores image ----------------------
+
+const FS_ACOMODADORES_COLLECTION = 'acomodadores';
+const FS_ACOMODADORES_DOC = 'current';
+
+export async function saveAcomodadoresImage(dataUrl) {
+  if (!firebaseConfigured()) {
+    throw new Error('Firebase no está configurado.');
+  }
+  const fs = await getFirestore();
+  const { doc, setDoc, serverTimestamp } = fs.__helpers;
+  await setDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC), {
+    imageData: dataUrl,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function loadAcomodadoresImage() {
+  if (!firebaseConfigured()) return null;
+  const fs = await getFirestore();
+  const { doc, getDoc } = fs.__helpers;
+  const snap = await getDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC));
+  if (!snap.exists()) return null;
+  const data = snap.data();
+  return data?.imageData || null;
+}
+
+export async function clearAcomodadoresImage() {
+  if (!firebaseConfigured()) return;
+  const fs = await getFirestore();
+  const { doc, deleteDoc } = fs.__helpers;
+  try {
+    await deleteDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC));
+  } catch (err) {
+    if (err?.code !== 'not-found') throw err;
+  }
+}

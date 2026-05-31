@@ -1,5 +1,6 @@
 import { parsePdfFile } from './pdf-parser.js';
 import { saveWeeks, loadWeeks, clearAll } from './storage.js';
+import { saveAcomodadoresImage, loadAcomodadoresImage, clearAcomodadoresImage } from './storage.js';
 import { verifyCredentials, isLoggedIn, logout, watchAuthState } from './auth.js';
 import { firebaseConfigured } from './firebase.js';
 import { renderWeek, findCurrentWeekIndex, formatTodayLabel } from './ui.js';
@@ -32,6 +33,25 @@ const dom = {
   weeksSummary: document.getElementById('weeks-summary'),
   weeksList: document.getElementById('weeks-list'),
 
+  // Admin tabs
+  adminTabBtns: document.querySelectorAll('.admin-tab-btn'),
+  adminTabAsignaciones: document.getElementById('admin-tab-asignaciones'),
+  adminTabAcomodadores: document.getElementById('admin-tab-acomodadores'),
+
+  // Acomodadores upload
+  acomodadoresUploadForm: document.getElementById('acomodadores-upload-form'),
+  acomodadoresFileInput: document.getElementById('acomodadores-file'),
+  acomodadoresUploadStatus: document.getElementById('acomodadores-upload-status'),
+  acomodadoresUploadError: document.getElementById('acomodadores-upload-error'),
+  acomodadoresClearBtn: document.getElementById('acomodadores-clear-btn'),
+  acomodadoresPreview: document.getElementById('acomodadores-preview'),
+  acomodadoresPreviewImg: document.getElementById('acomodadores-preview-img'),
+
+  // Acomodadores display
+  acomodadoresImageDisplay: document.getElementById('acomodadores-image-display'),
+  acomodadoresDisplayImg: document.getElementById('acomodadores-display-img'),
+  acomodadoresDefaultTables: document.getElementById('acomodadores-default-tables'),
+
   // Install prompt
   installPrompt: document.getElementById('install-prompt'),
   installBtn: document.getElementById('install-btn'),
@@ -52,10 +72,10 @@ async function init() {
   setupInstallPrompt();
   dom.statusBar.textContent = formatTodayLabel();
   if (firebaseConfigured()) {
-    // Keep our local session flag in sync with Firebase auth state.
     watchAuthState().catch(() => {});
   }
   await refreshFromStorage();
+  await loadAcomodadoresDisplay();
 }
 
 function attachListeners() {
@@ -81,9 +101,19 @@ function attachListeners() {
   dom.prevBtn.addEventListener('click', () => navigate(-1));
   dom.nextBtn.addEventListener('click', () => navigate(+1));
 
+  // Section tabs (Asignaciones / Acomodadores)
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
+
+  // Admin tabs
+  dom.adminTabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => switchAdminTab(btn.dataset.adminTab));
+  });
+
+  // Acomodadores upload
+  dom.acomodadoresUploadForm.addEventListener('submit', onAcomodadoresUpload);
+  dom.acomodadoresClearBtn.addEventListener('click', onAcomodadoresClear);
 }
 
 function switchTab(tabId) {
@@ -95,6 +125,113 @@ function switchTab(tabId) {
     content.hidden = !isActive;
     content.classList.toggle('active', isActive);
   });
+}
+
+function switchAdminTab(tabId) {
+  dom.adminTabBtns.forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.adminTab === tabId);
+  });
+  dom.adminTabAsignaciones.hidden = tabId !== 'asignaciones';
+  dom.adminTabAsignaciones.classList.toggle('active', tabId === 'asignaciones');
+  dom.adminTabAcomodadores.hidden = tabId !== 'acomodadores';
+  dom.adminTabAcomodadores.classList.toggle('active', tabId === 'acomodadores');
+}
+
+function compressImage(file, maxWidth = 1200, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let w = img.width;
+        let h = img.height;
+        if (w > maxWidth) {
+          h = (h * maxWidth) / w;
+          w = maxWidth;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function onAcomodadoresUpload(e) {
+  e.preventDefault();
+  dom.acomodadoresUploadError.hidden = true;
+  dom.acomodadoresUploadStatus.hidden = false;
+  dom.acomodadoresUploadStatus.classList.remove('success');
+  dom.acomodadoresUploadStatus.textContent = 'Procesando imagen…';
+
+  const file = dom.acomodadoresFileInput.files?.[0];
+  if (!file) {
+    dom.acomodadoresUploadError.textContent = 'Seleccione una imagen.';
+    dom.acomodadoresUploadError.hidden = false;
+    dom.acomodadoresUploadStatus.hidden = true;
+    return;
+  }
+
+  try {
+    const dataUrl = await compressImage(file);
+    dom.acomodadoresUploadStatus.textContent = 'Guardando en el servidor…';
+    await saveAcomodadoresImage(dataUrl);
+    dom.acomodadoresUploadStatus.textContent = 'Imagen guardada y publicada.';
+    dom.acomodadoresUploadStatus.classList.add('success');
+    dom.acomodadoresPreview.hidden = false;
+    dom.acomodadoresPreviewImg.src = dataUrl;
+    await loadAcomodadoresDisplay();
+  } catch (err) {
+    console.error(err);
+    dom.acomodadoresUploadError.textContent = err?.message || 'No se pudo guardar la imagen.';
+    dom.acomodadoresUploadError.hidden = false;
+    dom.acomodadoresUploadStatus.hidden = true;
+  }
+}
+
+async function onAcomodadoresClear() {
+  if (!confirm('¿Borrar la imagen de acomodadores?')) return;
+  try {
+    await clearAcomodadoresImage();
+    dom.acomodadoresPreview.hidden = true;
+    dom.acomodadoresPreviewImg.src = '';
+    dom.acomodadoresUploadStatus.hidden = true;
+    await loadAcomodadoresDisplay();
+  } catch (err) {
+    dom.acomodadoresUploadError.textContent = err?.message || 'No se pudo borrar.';
+    dom.acomodadoresUploadError.hidden = false;
+  }
+}
+
+async function loadAcomodadoresDisplay() {
+  if (!firebaseConfigured()) {
+    dom.acomodadoresImageDisplay.hidden = true;
+    dom.acomodadoresDefaultTables.hidden = false;
+    return;
+  }
+  try {
+    const dataUrl = await loadAcomodadoresImage();
+    if (dataUrl) {
+      dom.acomodadoresDisplayImg.src = dataUrl;
+      dom.acomodadoresImageDisplay.hidden = false;
+      dom.acomodadoresDefaultTables.hidden = true;
+      dom.acomodadoresPreview.hidden = false;
+      dom.acomodadoresPreviewImg.src = dataUrl;
+    } else {
+      dom.acomodadoresImageDisplay.hidden = true;
+      dom.acomodadoresDefaultTables.hidden = false;
+    }
+  } catch {
+    dom.acomodadoresImageDisplay.hidden = true;
+    dom.acomodadoresDefaultTables.hidden = false;
+  }
 }
 
 function openAdminModal() {
