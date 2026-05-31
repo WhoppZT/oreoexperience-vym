@@ -141,6 +141,7 @@ function switchAdminTab(tabId) {
   dom.adminTabAsignaciones.classList.toggle('active', tabId === 'asignaciones');
   dom.adminTabAcomodadores.hidden = tabId !== 'acomodadores';
   dom.adminTabAcomodadores.classList.toggle('active', tabId === 'acomodadores');
+  if (tabId === 'acomodadores') loadAdminAcomodadoresPreview();
 }
 
 async function forceRefresh() {
@@ -256,10 +257,28 @@ async function loadAcomodadoresDisplay() {
     } else {
       dom.acomodadoresImageDisplay.hidden = true;
       dom.acomodadoresDefaultTables.hidden = false;
+      dom.acomodadoresPreview.hidden = true;
+      dom.acomodadoresPreviewImg.src = '';
     }
   } catch {
     dom.acomodadoresImageDisplay.hidden = true;
     dom.acomodadoresDefaultTables.hidden = false;
+  }
+}
+
+async function loadAdminAcomodadoresPreview() {
+  if (!firebaseConfigured()) return;
+  try {
+    const dataUrl = await loadAcomodadoresImage();
+    if (dataUrl) {
+      dom.acomodadoresPreview.hidden = false;
+      dom.acomodadoresPreviewImg.src = dataUrl;
+    } else {
+      dom.acomodadoresPreview.hidden = true;
+      dom.acomodadoresPreviewImg.src = '';
+    }
+  } catch {
+    dom.acomodadoresPreview.hidden = true;
   }
 }
 
