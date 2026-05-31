@@ -936,7 +936,10 @@ button:active {
 
   .acomodadores-header h2 {
     font-size: 1rem;
-    padding: 0.7rem 1rem;
+  }
+
+  .acomodadores-icon {
+    font-size: 1.1rem;
   }
 
   .acomodadores-table {
@@ -945,12 +948,33 @@ button:active {
 
   .acomodadores-table thead th {
     padding: 0.55rem 0.7rem;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
+  }
+
+  .acomodadores-table thead th.th-date {
+    width: 150px;
   }
 
   .acomodadores-table tbody td {
     padding: 0.5rem 0.7rem;
     font-size: 0.85rem;
+  }
+
+  .date-day {
+    font-size: 1rem;
+  }
+
+  .date-month {
+    font-size: 0.72rem;
+  }
+
+  .day-badge {
+    font-size: 0.58rem;
+    padding: 0.12rem 0.35rem;
+  }
+
+  .person-name {
+    font-size: 0.82rem;
   }
 
   .site-footer-credit {
@@ -1036,8 +1060,8 @@ button:active {
 .acomodadores-section {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  margin: 0.5rem 0 1.5rem;
+  gap: 1.75rem;
+  margin: 0.75rem 0 1.5rem;
 }
 
 .acomodadores-card {
@@ -1046,11 +1070,24 @@ button:active {
   overflow: hidden;
   box-shadow: var(--shadow-md);
   border: 1px solid var(--color-border);
+  transition: box-shadow 0.2s ease;
+}
+
+.acomodadores-card:hover {
+  box-shadow: var(--shadow-lg);
 }
 
 .acomodadores-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   padding: 0.85rem 1.25rem;
   color: #fff;
+}
+
+.acomodadores-icon {
+  font-size: 1.3rem;
+  line-height: 1;
 }
 
 .acomodadores-header h2 {
@@ -1088,27 +1125,90 @@ button:active {
   padding: 0.7rem 1rem;
   text-align: left;
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   color: var(--color-muted);
   border-bottom: 2px solid var(--color-border-strong);
   white-space: nowrap;
 }
 
+.acomodadores-table thead th.th-date {
+  width: 200px;
+}
+
+.acomodadores-table tbody tr {
+  transition: background 0.12s ease;
+}
+
+.acomodadores-table tbody tr:nth-child(even) {
+  background: var(--color-bg-soft);
+}
+
+.acomodadores-table tbody tr:hover {
+  background: var(--color-primary-soft);
+}
+
 .acomodadores-table tbody td {
-  padding: 0.65rem 1rem;
+  padding: 0.7rem 1rem;
   border-bottom: 1px solid var(--color-border);
   color: var(--color-text);
   font-weight: 500;
+  vertical-align: middle;
 }
 
 .acomodadores-table tbody tr:last-child td {
   border-bottom: none;
 }
 
-.acomodadores-table tbody tr:hover {
-  background: var(--color-primary-soft);
+/* Date cell structure */
+.date-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.date-day {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  min-width: 2rem;
+}
+
+.date-month {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.day-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-pill);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.day-sab {
+  background: rgba(107, 33, 168, 0.12);
+  color: #6d28d9;
+  border: 1px solid rgba(107, 33, 168, 0.2);
+}
+
+.day-mie {
+  background: rgba(59, 46, 126, 0.1);
+  color: #3b2e7e;
+  border: 1px solid rgba(59, 46, 126, 0.18);
+}
+
+.person-name {
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 /* Print styles */
