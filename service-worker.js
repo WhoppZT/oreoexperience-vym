@@ -1,6 +1,6 @@
 // Simple offline cache for the Asignaciones Vida y Ministerio PWA.
 
-const CACHE_VERSION = 'v21';
+const CACHE_VERSION = 'v22';
 const CACHE_NAME = `asignaciones-vym-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -25,11 +25,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then(async (cache) => {
-        for (const url of PRECACHE_URLS) {
-          await cache.add(new Request(url, { cache: 'reload' }));
-        }
-      })
+      .then((cache) => cache.addAll(PRECACHE_URLS))
       .then(() => self.skipWaiting()),
   );
 });

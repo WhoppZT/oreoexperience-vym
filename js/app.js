@@ -161,7 +161,9 @@ async function forceRefresh() {
     }
   }
 
-  window.location.reload();
+  const url = new URL(window.location.href);
+  url.searchParams.set('v', Date.now());
+  window.location.replace(url.toString());
 }
 
 function compressImage(file, maxWidth = 1200, quality = 0.7) {
