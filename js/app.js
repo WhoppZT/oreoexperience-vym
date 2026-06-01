@@ -15,7 +15,6 @@ const dom = {
   nextBtn: document.getElementById('next-week-btn'),
   weekPosition: document.getElementById('week-position'),
   statusBar: document.getElementById('status-bar'),
-  footerInfo: document.getElementById('footer-info'),
 
   // Modal
   modal: document.getElementById('admin-modal'),
@@ -52,6 +51,10 @@ const dom = {
 
   // Acomodadores display (public)
   acomodadoresDefaultTables: document.getElementById('acomodadores-default-tables'),
+  acomodadoresNav: document.getElementById('acomodadores-nav'),
+  acomodadoresPrevBtn: document.getElementById('acomodadores-prev-btn'),
+  acomodadoresNextBtn: document.getElementById('acomodadores-next-btn'),
+  acomodadoresPosition: document.getElementById('acomodadores-position'),
 
   // Install prompt
   installPrompt: document.getElementById('install-prompt'),
@@ -122,6 +125,21 @@ function attachListeners() {
   if (refreshBtn) {
     refreshBtn.addEventListener('click', forceRefresh);
   }
+
+  if (dom.acomodadoresPrevBtn) {
+    dom.acomodadoresPrevBtn.addEventListener('click', () => navigateAcomodadoresWeek(-1));
+  }
+  if (dom.acomodadoresNextBtn) {
+    dom.acomodadoresNextBtn.addEventListener('click', () => navigateAcomodadoresWeek(1));
+  }
+}
+
+function navigateAcomodadoresWeek(delta) {
+  const newIdx = acoState.viewIndex + delta;
+  if (newIdx < 0 || newIdx >= acoState.weeks.length) return;
+  acoState.viewIndex = newIdx;
+  acoState._navigated = true;
+  renderPublicAcomodadores();
 }
 
 function switchTab(tabId) {
@@ -133,6 +151,10 @@ function switchTab(tabId) {
     content.hidden = !isActive;
     content.classList.toggle('active', isActive);
   });
+  if (tabId === 'acomodadores') {
+    acoState._navigated = false;
+    renderPublicAcomodadores();
+  }
 }
 
 function switchAdminTab(tabId) {
@@ -148,8 +170,44 @@ function switchAdminTab(tabId) {
 
 async function forceRefresh() {
   const btn = document.getElementById('refresh-btn');
-  if (btn) btn.classList.add('spinning');
+  if (btn) {
+    btn.classList.add('spinning');
+    btn.disabled = true;
+  }
+  showRefreshToast('Buscando actualizaciones...');
 
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.update();
+        if (reg.waiting) {
+          showRefreshToast('Aplicando nueva versión...');
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          await new Promise((resolve) => {
+            const onChange = () => {
+              navigator.serviceWorker.removeEventListener('controllerchange', onChange);
+              resolve();
+            };
+            navigator.serviceWorker.addEventListener('controllerchange', onChange);
+            setTimeout(resolve, 3000);
+          });
+          window.location.href = window.location.pathname + '?v=' + Date.now();
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('SW update check failed:', err);
+    }
+  }
+
+  showRefreshToast('Limpiando caché...');
+  if ('caches' in window) {
+    const names = await caches.keys();
+    for (const name of names) {
+      await caches.delete(name);
+    }
+  }
   if ('serviceWorker' in navigator) {
     const regs = await navigator.serviceWorker.getRegistrations();
     for (const reg of regs) {
@@ -157,16 +215,20 @@ async function forceRefresh() {
     }
   }
 
-  if ('caches' in window) {
-    const names = await caches.keys();
-    for (const name of names) {
-      await caches.delete(name);
-    }
-  }
+  window.location.href = window.location.pathname + '?v=' + Date.now();
+}
 
-  const url = new URL(window.location.href);
-  url.searchParams.set('v', Date.now());
-  window.location.replace(url.toString());
+function showRefreshToast(text) {
+  let toast = document.getElementById('refresh-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'refresh-toast';
+    toast.className = 'refresh-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = text;
+  toast.hidden = false;
+  toast.classList.add('visible');
 }
 
 async function onAcomodadoresUpload(e) {
@@ -252,6 +314,7 @@ function parseAcomodadoresText(lines) {
   ];
 
   let currentSection = null;
+  let lastEntry = null;
 
   function detectWeekday(upper) {
     for (const w of weekdays) {
@@ -267,13 +330,23 @@ function parseAcomodadoresText(lines) {
     return '';
   }
 
+  function extractNamesFromLine(upper) {
+    let rest = upper;
+    rest = rest.replace(/\b\d{1,2}\b/g, ' ');
+    for (const m of months) rest = rest.replace(new RegExp('\\b' + m + '\\b', 'g'), ' ');
+    for (const w of weekdays) rest = rest.replace(new RegExp('\\b' + w + '\\b', 'g'), ' ');
+    return rest.split(/\s*[-–—|]+\s*|\s{2,}/)
+      .map(s => s.trim())
+      .filter(s => s.length > 1 && !/^\d+$/.test(s) && !stopWords.has(s));
+  }
+
   for (const line of lines) {
     const upper = line.toUpperCase().trim();
     if (!upper) continue;
 
-    if (upper.includes('ACOMODADOR')) { currentSection = sections[0]; continue; }
-    if (upper.includes('MICROFONO') || upper.includes('MICRÓFONO')) { currentSection = sections[1]; continue; }
-    if (upper.includes('PLATAFORMA')) { currentSection = sections[2]; continue; }
+    if (upper.includes('ACOMODADOR')) { currentSection = sections[0]; lastEntry = null; continue; }
+    if (upper.includes('MICROFONO') || upper.includes('MICRÓFONO')) { currentSection = sections[1]; lastEntry = null; continue; }
+    if (upper.includes('PLATAFORMA')) { currentSection = sections[2]; lastEntry = null; continue; }
     if (!currentSection) continue;
 
     const month = detectMonth(upper);
@@ -281,24 +354,25 @@ function parseAcomodadoresText(lines) {
     const dayMatch = upper.match(/\b(\d{1,2})\b/);
     const dayNum = dayMatch ? dayMatch[1].padStart(2, '0') : null;
 
-    if (!dayNum || !month) continue;
+    if (!dayNum || !month) {
+      const names = extractNamesFromLine(upper);
+      if (names.length > 0 && lastEntry && lastEntry.slots.length === 0) {
+        const maxSlots = currentSection.slotLabels.length || 1;
+        lastEntry.slots = names.slice(0, Math.max(maxSlots, names.length));
+      }
+      continue;
+    }
 
-    let rest = upper;
-    rest = rest.replace(/\b\d{1,2}\b/g, ' ');
-    for (const m of months) rest = rest.replace(new RegExp('\\b' + m + '\\b', 'g'), ' ');
-    for (const w of weekdays) rest = rest.replace(new RegExp('\\b' + w + '\\b', 'g'), ' ');
-
-    const names = rest.split(/\s*[-–—|]+\s*|\s{2,}/)
-      .map(s => s.trim())
-      .filter(s => s.length > 1 && !/^\d+$/.test(s) && !stopWords.has(s));
-
+    const names = extractNamesFromLine(upper);
     const maxSlots = currentSection.slotLabels.length || 1;
-    currentSection.entries.push({
+    const newEntry = {
       day: dayNum,
       month,
       weekday,
       slots: names.slice(0, Math.max(maxSlots, names.length)),
-    });
+    };
+    currentSection.entries.push(newEntry);
+    lastEntry = newEntry;
   }
 
   for (const sec of sections) {
@@ -434,21 +508,113 @@ async function loadAdminAcomodadoresPreview() {
   }
 }
 
+const MONTHS_ES = {
+  ENERO: 0, FEBRERO: 1, MARZO: 2, ABRIL: 3, MAYO: 4, JUNIO: 5,
+  JULIO: 6, AGOSTO: 7, SEPTIEMBRE: 8, OCTUBRE: 9, NOVIEMBRE: 10, DICIEMBRE: 11,
+};
+
+function entryDateMs(entry, refYear) {
+  const m = MONTHS_ES[entry.month];
+  if (m === undefined) return null;
+  const day = parseInt(entry.day, 10);
+  if (!Number.isFinite(day)) return null;
+  return new Date(refYear, m, day, 0, 0, 0, 0).getTime();
+}
+
+function startOfWeek(date) {
+  const dow = date.getDay();
+  const delta = dow === 0 ? 6 : dow - 1;
+  const start = new Date(date);
+  start.setDate(date.getDate() - delta);
+  start.setHours(0, 0, 0, 0);
+  return start;
+}
+
+function groupEntriesByWeek(entries, refYear) {
+  const weeks = [];
+  for (const entry of entries) {
+    const ms = entryDateMs(entry, refYear);
+    if (ms === null) continue;
+    const startMs = startOfWeek(new Date(ms)).getTime();
+    let week = weeks.find(w => w.startMs === startMs);
+    if (!week) {
+      week = { startMs, entries: [] };
+      weeks.push(week);
+    }
+    week.entries.push({ entry, ms });
+  }
+  weeks.sort((a, b) => a.startMs - b.startMs);
+  for (const w of weeks) w.entries.sort((a, b) => a.ms - b.ms);
+  return weeks;
+}
+
+function findAcomodadoresWeekIndex(weeks, now = new Date()) {
+  const todayMs = now.getTime();
+  for (let i = 0; i < weeks.length; i++) {
+    const w = weeks[i];
+    const endMs = w.startMs + 7 * 24 * 60 * 60 * 1000;
+    if (todayMs >= w.startMs && todayMs < endMs) return { index: i, kind: 'current' };
+  }
+  for (let i = 0; i < weeks.length; i++) {
+    if (todayMs < weeks[i].startMs) return { index: i, kind: 'upcoming' };
+  }
+  return { index: weeks.length - 1, kind: 'past' };
+}
+
+const acoState = { weeks: [], viewIndex: 0 };
+
 async function renderPublicAcomodadores() {
   const container = dom.acomodadoresDefaultTables;
   if (!container) return;
   try {
     const data = await loadAcomodadoresData();
+    const refYear = new Date().getFullYear();
+
+    const sectionsWeeks = data.sections.map(section => ({
+      ...section,
+      weeks: groupEntriesByWeek(section.entries, refYear),
+    }));
+    const totalWeeks = sectionsWeeks.reduce((max, s) => Math.max(max, s.weeks.length), 0);
+    acoState.weeks = Array.from({ length: totalWeeks }, (_, i) => i);
+
+    const { index } = findAcomodadoresWeekIndex(
+      acoState.weeks.map(i => ({ startMs: sectionsWeeks.reduce((min, s) => Math.min(min, s.weeks[i]?.startMs ?? Infinity), Infinity) })),
+    );
+    if (acoState.viewIndex >= totalWeeks || acoState.viewIndex < 0) acoState.viewIndex = 0;
+    if (!acoState._navigated) {
+      acoState.viewIndex = index >= 0 ? index : 0;
+    }
+
+    if (dom.acomodadoresNav) {
+      dom.acomodadoresNav.hidden = totalWeeks <= 1;
+      dom.acomodadoresPrevBtn.disabled = acoState.viewIndex <= 0;
+      dom.acomodadoresNextBtn.disabled = acoState.viewIndex >= totalWeeks - 1;
+      const currentWeek = sectionsWeeks[0]?.weeks[acoState.viewIndex];
+      if (currentWeek) {
+        const start = new Date(currentWeek.startMs);
+        const end = new Date(currentWeek.startMs + 6 * 24 * 60 * 60 * 1000);
+        const fmt = { day: '2-digit', month: 'short' };
+        dom.acomodadoresPosition.textContent = `Semana ${acoState.viewIndex + 1} de ${totalWeeks} · ${start.toLocaleDateString('es', fmt)} – ${end.toLocaleDateString('es', fmt)}`;
+      } else {
+        dom.acomodadoresPosition.textContent = `Semana ${acoState.viewIndex + 1} de ${totalWeeks}`;
+      }
+    }
+
     container.innerHTML = '';
-    for (const section of data.sections) {
+    for (const section of sectionsWeeks) {
       const card = document.createElement('div');
       card.className = 'acomodadores-card';
       const headerClass = section.id === 'acomodadores' ? 'acomodadores-ac' : section.id === 'microfonos' ? 'acomodadores-mic' : 'acomodadores-plat';
+      const week = section.weeks[acoState.viewIndex];
+      const visibleEntries = week ? week.entries.map(w => w.entry) : [];
+
       card.innerHTML = `
-        <div class="acomodadores-header ${headerClass}"><h2>${section.title}</h2></div>
+        <div class="acomodadores-header ${headerClass}">
+          <h2>${section.title}</h2>
+        </div>
         <div class="acomodadores-body">
           <div class="acomodadores-list">
-            ${section.entries.map(entry => {
+            ${visibleEntries.length === 0 ? '<p class="acomodadores-empty">Sin asignaciones para esta semana.</p>' : visibleEntries.map(entry => {
               const weekdayClass = entry.weekday === 'SAB' ? 'row-sab' : 'row-mie';
               const badgeClass = entry.weekday === 'SAB' ? 'badge-sab' : 'badge-mie';
               const badges = entry.weekday === 'SAB' ? 'SAB' : entry.weekday === 'MIE' ? 'MIE' : entry.weekday;
@@ -475,6 +641,7 @@ async function renderPublicAcomodadores() {
     }
   } catch {
     container.innerHTML = '';
+    if (dom.acomodadoresNav) dom.acomodadoresNav.hidden = true;
   }
 }
 
@@ -659,17 +826,6 @@ function renderAdminWeeksList() {
 }
 
 function updateFooterInfo() {
-  if (!state.meta || !state.meta.uploadedAt) {
-    dom.footerInfo.textContent = '';
-    return;
-  }
-  const date = new Date(state.meta.uploadedAt).toLocaleDateString('es', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
-  const count = state.meta.weekCount ?? state.weeks.length;
-  dom.footerInfo.textContent = `${count} semanas cargadas · subido el ${date}`;
 }
 
 function escapeHtml(str) {
@@ -685,17 +841,35 @@ function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker
-        .register('./service-worker.js', { scope: './' })
-        .then((registration) => {
+        .getRegistration()
+        .then((existing) => {
+          const hadActive = !!(existing && existing.active);
+          return navigator.serviceWorker.register('./service-worker.js', { scope: './' })
+            .then((registration) => ({ registration, hadActive }));
+        })
+        .then(({ registration, hadActive }) => {
           registration.addEventListener('updatefound', () => {
             const newWorker = registration.installing;
             if (!newWorker) return;
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'activated' && navigator.serviceWorker.controller) {
-                window.location.reload();
+                if (!hadActive) return;
+                const refreshBtn = document.getElementById('refresh-btn');
+                if (refreshBtn) {
+                  refreshBtn.classList.add('has-update');
+                  refreshBtn.title = 'Nueva versión disponible — tocar para actualizar';
+                }
               }
             });
           });
+
+          if (registration.waiting && hadActive) {
+            const refreshBtn = document.getElementById('refresh-btn');
+            if (refreshBtn) {
+              refreshBtn.classList.add('has-update');
+              refreshBtn.title = 'Nueva versión disponible — tocar para actualizar';
+            }
+          }
         })
         .catch((err) => console.warn('SW registration failed:', err));
     });
@@ -728,5 +902,7 @@ function setupInstallPrompt() {
 
 init().catch((err) => {
   console.error('Init failed', err);
-  dom.statusBar.textContent = 'Ocurrió un error iniciando la aplicación.';
+  try {
+    if (dom.statusBar) dom.statusBar.textContent = 'Ocurrió un error iniciando la aplicación. Toque el botón de actualizar.';
+  } catch {}
 });
