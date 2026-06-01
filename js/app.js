@@ -649,40 +649,81 @@ async function renderPublicAcomodadores() {
     }
 
     container.innerHTML = '';
+
+    const weekdayFull = { SAB: 'SÁBADO', MIE: 'MIÉRCOLES', JUE: 'JUEVES', VIE: 'VIERNES', LUN: 'LUNES', MAR: 'MARTES', DOM: 'DOMINGO' };
+    const meetingType = { SAB: 'Reunión de fin de semana', DOM: 'Reunión de fin de semana', MIE: 'Reunión de entre semana', JUE: 'Reunión de entre semana', VIE: 'Reunión de entre semana' };
+    const sectionMeta = {
+      acomodadores: { icon: '👥', cls: 'sub-ac' },
+      microfonos: { icon: '🎤', cls: 'sub-mic' },
+      plataforma: { icon: '📋', cls: 'sub-plat' },
+    };
+
+    const dayMap = new Map();
     for (const section of sectionsWeeks) {
-      const card = document.createElement('div');
-      card.className = 'acomodadores-card';
-      const headerClass = section.id === 'acomodadores' ? 'acomodadores-ac' : section.id === 'microfonos' ? 'acomodadores-mic' : 'acomodadores-plat';
       const week = section.weeks[acoState.viewIndex];
-      const visibleEntries = week ? week.entries.map(w => w.entry) : [];
+      if (!week) continue;
+      for (const wEntry of week.entries) {
+        const entry = wEntry.entry;
+        const key = `${entry.day}-${entry.month}-${entry.weekday}`;
+        if (!dayMap.has(key)) {
+          dayMap.set(key, { day: entry.day, month: entry.month, weekday: entry.weekday, sections: [] });
+        }
+        dayMap.get(key).sections.push({
+          id: section.id,
+          title: section.title,
+          slotLabels: section.slotLabels,
+          slots: entry.slots,
+        });
+      }
+    }
+
+    const dayOrder = { MIE: 0, JUE: 1, VIE: 2, SAB: 3, DOM: 4 };
+    const days = [...dayMap.values()].sort((a, b) => (dayOrder[a.weekday] ?? 9) - (dayOrder[b.weekday] ?? 9));
+
+    if (days.length === 0) {
+      container.innerHTML = '<p class="acomodadores-empty">Sin asignaciones para esta semana.</p>';
+      return;
+    }
+
+    for (const day of days) {
+      const card = document.createElement('div');
+      card.className = 'acomodadores-day-card';
+      const dayClass = day.weekday === 'SAB' ? 'day-card-sab' : 'day-card-mie';
+      const fullDay = weekdayFull[day.weekday] || day.weekday;
+      const meeting = meetingType[day.weekday] || '';
 
       card.innerHTML = `
-        <div class="acomodadores-header ${headerClass}">
-          <h2>${section.title}</h2>
-        </div>
-        <div class="acomodadores-body">
-          <div class="acomodadores-list">
-            ${visibleEntries.length === 0 ? '<p class="acomodadores-empty">Sin asignaciones para esta semana.</p>' : visibleEntries.map(entry => {
-              const weekdayClass = entry.weekday === 'SAB' ? 'row-sab' : 'row-mie';
-              const badgeClass = entry.weekday === 'SAB' ? 'badge-sab' : 'badge-mie';
-              const badges = entry.weekday === 'SAB' ? 'SAB' : entry.weekday === 'MIE' ? 'MIE' : entry.weekday;
-              const maxSlots = Math.max(section.slotLabels.length, entry.slots.length);
-              const pills = Array.from({ length: maxSlots }, (_, i) => {
-                const label = section.slotLabels[i] || '';
-                const name = entry.slots[i] || '';
-                if (!name) return '';
-                const labelHtml = label ? `<span class="person-slot-label">${label}</span>` : '';
-                return `<div class="person-slot">${labelHtml}<span class="person-pill">${name}</span></div>`;
-              }).join('');
-              return `
-                <div class="acomodadores-row ${weekdayClass}">
-                  <div class="row-date"><span class="date-num">${entry.day}</span><span class="date-mes">${entry.month}</span></div>
-                  <div class="row-badge ${badgeClass}">${badges}</div>
-                  <div class="row-people">${pills}</div>
-                </div>
-              `;
-            }).join('')}
+        <div class="day-header ${dayClass}">
+          <div class="day-header-left">
+            <span class="day-weekday">${fullDay}</span>
+            <span class="day-meeting">${meeting}</span>
           </div>
+          <div class="day-date-block">
+            <span class="day-num">${day.day}</span>
+            <span class="day-mes">${day.month}</span>
+          </div>
+        </div>
+        <div class="day-body">
+          ${day.sections.map(sec => {
+            const meta = sectionMeta[sec.id] || { icon: '•', cls: '' };
+            const maxSlots = Math.max(sec.slotLabels.length, sec.slots.length);
+            const pills = Array.from({ length: maxSlots }, (_, i) => {
+              const label = sec.slotLabels[i] || '';
+              const name = sec.slots[i] || '';
+              if (!name) return '';
+              const labelHtml = label ? `<span class="person-slot-label">${label}</span>` : '';
+              return `<div class="person-slot">${labelHtml}<span class="person-pill">${name}</span></div>`;
+            }).join('');
+            return `
+              <div class="day-section ${meta.cls}">
+                <div class="day-section-header">
+                  <span class="day-section-icon">${meta.icon}</span>
+                  <span class="day-section-title">${sec.title}</span>
+                </div>
+                <div class="day-section-people">${pills || '<span class="day-section-empty">—</span>'}</div>
+              </div>
+            `;
+          }).join('')}
         </div>
       `;
       container.appendChild(card);
