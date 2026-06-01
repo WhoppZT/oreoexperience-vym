@@ -316,16 +316,61 @@ function parseAcomodadoresText(lines) {
   let currentSection = null;
   let lastEntry = null;
 
-  function detectWeekday(upper) {
-    for (const w of weekdays) {
-      if (upper.includes(w)) return w.length > 3 ? (weekdayToShort[w] || w.substring(0,3)) : w;
+  function levenshtein(a, b) {
+    if (a === b) return 0;
+    if (!a.length) return b.length;
+    if (!b.length) return a.length;
+    const prev = new Array(b.length + 1);
+    for (let j = 0; j <= b.length; j++) prev[j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      let prevDiag = prev[0];
+      prev[0] = i;
+      for (let j = 1; j <= b.length; j++) {
+        const tmp = prev[j];
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, prevDiag + cost);
+        prevDiag = tmp;
+      }
+    }
+    return prev[b.length];
+  }
+
+  function fuzzyMatchWord(word, candidates) {
+    if (!word || word.length < 3) return null;
+    const upper = word.toUpperCase();
+    for (const c of candidates) {
+      if (upper === c) return c;
+    }
+    let best = null;
+    let bestDist = Infinity;
+    let bestLen = 0;
+    for (const c of candidates) {
+      if (Math.abs(upper.length - c.length) > 2) continue;
+      const dist = levenshtein(upper, c);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = c;
+        bestLen = c.length;
+      }
+    }
+    const threshold = bestLen >= 6 ? 2 : 1;
+    return bestDist <= threshold ? best : null;
+  }
+
+  function detectMonth(upper) {
+    const tokens = upper.split(/\s+/);
+    for (const t of tokens) {
+      const m = fuzzyMatchWord(t, months);
+      if (m) return m;
     }
     return '';
   }
 
-  function detectMonth(upper) {
-    for (const m of months) {
-      if (upper.includes(m)) return m;
+  function detectWeekday(upper) {
+    const tokens = upper.split(/\s+/);
+    for (const t of tokens) {
+      const w = fuzzyMatchWord(t, weekdays);
+      if (w) return w.length > 3 ? (weekdayToShort[w] || w.substring(0, 3)) : w;
     }
     return '';
   }
@@ -333,8 +378,11 @@ function parseAcomodadoresText(lines) {
   function extractNamesFromLine(upper) {
     let rest = upper;
     rest = rest.replace(/\b\d{1,2}\b/g, ' ');
-    for (const m of months) rest = rest.replace(new RegExp('\\b' + m + '\\b', 'g'), ' ');
-    for (const w of weekdays) rest = rest.replace(new RegExp('\\b' + w + '\\b', 'g'), ' ');
+    for (const t of rest.split(/\s+/)) {
+      if (fuzzyMatchWord(t, months) || fuzzyMatchWord(t, weekdays)) {
+        rest = rest.replace(new RegExp('\\b' + t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'g'), ' ');
+      }
+    }
     return rest.split(/\s*[-–—|]+\s*|\s{2,}/)
       .map(s => s.trim())
       .filter(s => s.length > 1 && !/^\d+$/.test(s) && !stopWords.has(s));
