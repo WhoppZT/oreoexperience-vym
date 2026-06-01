@@ -1,6 +1,6 @@
 // Simple offline cache for the Asignaciones Vida y Ministerio PWA.
 
-const CACHE_VERSION = 'v23';
+const CACHE_VERSION = 'v24';
 const CACHE_NAME = `asignaciones-vym-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [

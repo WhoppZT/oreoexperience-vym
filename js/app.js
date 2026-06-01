@@ -1,6 +1,7 @@
 import { parsePdfFile } from './pdf-parser.js';
+import * as pdfjsLib from '../vendor/pdf.min.mjs';
 import { saveWeeks, loadWeeks, clearAll } from './storage.js';
-import { saveAcomodadoresImage, loadAcomodadoresImage, clearAcomodadoresImage } from './storage.js';
+import { saveAcomodadoresData, loadAcomodadoresData, clearAcomodadoresData } from './storage.js';
 import { verifyCredentials, isLoggedIn, logout, watchAuthState } from './auth.js';
 import { firebaseConfigured } from './firebase.js';
 import { renderWeek, findCurrentWeekIndex, formatTodayLabel } from './ui.js';
@@ -41,15 +42,15 @@ const dom = {
   // Acomodadores upload
   acomodadoresUploadForm: document.getElementById('acomodadores-upload-form'),
   acomodadoresFileInput: document.getElementById('acomodadores-file'),
-  acomodadoresUploadStatus: document.getElementById('acomodadores-upload-status'),
+  acomodadoresOcrStatus: document.getElementById('acomodadores-ocr-status'),
+  ocrProgressText: document.getElementById('ocr-progress-text'),
   acomodadoresUploadError: document.getElementById('acomodadores-upload-error'),
   acomodadoresClearBtn: document.getElementById('acomodadores-clear-btn'),
-  acomodadoresPreview: document.getElementById('acomodadores-preview'),
-  acomodadoresPreviewImg: document.getElementById('acomodadores-preview-img'),
+  acomodadoresOcrResult: document.getElementById('acomodadores-ocr-result'),
+  acomodadoresEditor: document.getElementById('acomodadores-editor'),
+  acomodadoresSaveBtn: document.getElementById('acomodadores-save-btn'),
 
-  // Acomodadores display
-  acomodadoresImageDisplay: document.getElementById('acomodadores-image-display'),
-  acomodadoresDisplayImg: document.getElementById('acomodadores-display-img'),
+  // Acomodadores display (public)
   acomodadoresDefaultTables: document.getElementById('acomodadores-default-tables'),
 
   // Install prompt
@@ -75,7 +76,7 @@ async function init() {
     watchAuthState().catch(() => {});
   }
   await refreshFromStorage();
-  await loadAcomodadoresDisplay();
+  await renderPublicAcomodadores();
 }
 
 function attachListeners() {
@@ -111,9 +112,10 @@ function attachListeners() {
     btn.addEventListener('click', () => switchAdminTab(btn.dataset.adminTab));
   });
 
-  // Acomodadores upload
+  // Acomodadores
   dom.acomodadoresUploadForm.addEventListener('submit', onAcomodadoresUpload);
   dom.acomodadoresClearBtn.addEventListener('click', onAcomodadoresClear);
+  dom.acomodadoresSaveBtn?.addEventListener('click', onAcomodadoresSave);
 
   // Refresh button
   const refreshBtn = document.getElementById('refresh-btn');
@@ -167,118 +169,312 @@ async function forceRefresh() {
   window.location.replace(url.toString());
 }
 
-function compressImage(file, maxWidth = 1200, quality = 0.7) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let w = img.width;
-        let h = img.height;
-        if (w > maxWidth) {
-          h = (h * maxWidth) / w;
-          w = maxWidth;
-        }
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.onerror = reject;
-      img.src = e.target.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
-
 async function onAcomodadoresUpload(e) {
   e.preventDefault();
   dom.acomodadoresUploadError.hidden = true;
-  dom.acomodadoresUploadStatus.hidden = false;
-  dom.acomodadoresUploadStatus.classList.remove('success');
-  dom.acomodadoresUploadStatus.textContent = 'Procesando imagen…';
+  dom.acomodadoresOcrStatus.hidden = false;
+  dom.ocrProgressText.textContent = 'Leyendo PDF...';
 
   const file = dom.acomodadoresFileInput.files?.[0];
   if (!file) {
-    dom.acomodadoresUploadError.textContent = 'Seleccione una imagen.';
+    dom.acomodadoresUploadError.textContent = 'Seleccione un archivo PDF.';
     dom.acomodadoresUploadError.hidden = false;
-    dom.acomodadoresUploadStatus.hidden = true;
+    dom.acomodadoresOcrStatus.hidden = true;
     return;
   }
 
   try {
-    const dataUrl = await compressImage(file);
-    dom.acomodadoresUploadStatus.textContent = 'Guardando en el servidor…';
-    await saveAcomodadoresImage(dataUrl);
-    dom.acomodadoresUploadStatus.textContent = 'Imagen guardada y publicada.';
-    dom.acomodadoresUploadStatus.classList.add('success');
-    dom.acomodadoresPreview.hidden = false;
-    dom.acomodadoresPreviewImg.src = dataUrl;
-    await loadAcomodadoresDisplay();
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdf.worker.min.mjs', import.meta.url).href;
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+
+    const allLines = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      dom.ocrProgressText.textContent = `Leyendo página ${p} de ${pdf.numPages}...`;
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const buckets = new Map();
+      for (const item of content.items) {
+        if (!item.str || !item.transform) continue;
+        const x = item.transform[4];
+        const y = item.transform[5];
+        const key = Math.round(y);
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push({ x, str: item.str });
+      }
+      const sortedKeys = [...buckets.keys()].sort((a, b) => b - a);
+      const merged = [];
+      for (const k of sortedKeys) {
+        if (merged.length && Math.abs(merged[merged.length - 1].key - k) <= 3) {
+          merged[merged.length - 1].items.push(...buckets.get(k));
+        } else {
+          merged.push({ key: k, items: [...buckets.get(k)] });
+        }
+      }
+      for (const row of merged) {
+        row.items.sort((a, b) => a.x - b.x);
+        const line = row.items.map(it => it.str).join('  ').trim();
+        if (line) allLines.push(line);
+      }
+    }
+
+    const rawText = allLines.join('\n');
+    console.log('=== PDF RAW TEXT ===');
+    console.log(rawText);
+    console.log('=== END PDF ===');
+
+    const parsed = parseAcomodadoresText(allLines);
+    pendingAcomodadoresData = parsed;
+    renderAcomodadoresEditor(parsed, rawText);
+    dom.acomodadoresOcrStatus.hidden = true;
+    dom.acomodadoresOcrResult.hidden = false;
   } catch (err) {
     console.error(err);
-    dom.acomodadoresUploadError.textContent = err?.message || 'No se pudo guardar la imagen.';
+    dom.acomodadoresUploadError.textContent = 'No se pudo leer el PDF. Intente con otro archivo.';
     dom.acomodadoresUploadError.hidden = false;
-    dom.acomodadoresUploadStatus.hidden = true;
+    dom.acomodadoresOcrStatus.hidden = true;
+  }
+}
+
+let pendingAcomodadoresData = null;
+
+function parseAcomodadoresText(lines) {
+  const months = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  const weekdays = ['DOMINGO','LUNES','MARTES','MIERCOLES','JUEVES','VIERNES','SABADO',
+    'DOM','LUN','MAR','MIE','JUE','VIE','SAB'];
+  const weekdayToShort = { DOMINGO:'SAB', LUNES:'LUN', MARTES:'MAR', MIERCOLES:'MIE', JUEVES:'JUE', VIERNES:'VIE', SABADO:'SAB' };
+  const stopWords = new Set(['DE','DEL','LA','LAS','LOS','EL','EN','Y','A','LA','PARA','CON','POR','UN','UNA']);
+
+  const sections = [
+    { id: 'acomodadores', title: 'Acomodadores', slotLabels: ['Parqueadero', 'Entrada'], entries: [] },
+    { id: 'microfonos', title: 'Microfonos', slotLabels: ['Asignado 1', 'Asignado 2'], entries: [] },
+    { id: 'plataforma', title: 'Plataforma', slotLabels: ['Asignado'], entries: [] },
+  ];
+
+  let currentSection = null;
+
+  function detectWeekday(upper) {
+    for (const w of weekdays) {
+      if (upper.includes(w)) return w.length > 3 ? (weekdayToShort[w] || w.substring(0,3)) : w;
+    }
+    return '';
+  }
+
+  function detectMonth(upper) {
+    for (const m of months) {
+      if (upper.includes(m)) return m;
+    }
+    return '';
+  }
+
+  for (const line of lines) {
+    const upper = line.toUpperCase().trim();
+    if (!upper) continue;
+
+    if (upper.includes('ACOMODADOR')) { currentSection = sections[0]; continue; }
+    if (upper.includes('MICROFONO') || upper.includes('MICRÓFONO')) { currentSection = sections[1]; continue; }
+    if (upper.includes('PLATAFORMA')) { currentSection = sections[2]; continue; }
+    if (!currentSection) continue;
+
+    const month = detectMonth(upper);
+    const weekday = detectWeekday(upper);
+    const dayMatch = upper.match(/\b(\d{1,2})\b/);
+    const dayNum = dayMatch ? dayMatch[1].padStart(2, '0') : null;
+
+    if (!dayNum || !month) continue;
+
+    let rest = upper;
+    rest = rest.replace(/\b\d{1,2}\b/g, ' ');
+    for (const m of months) rest = rest.replace(new RegExp('\\b' + m + '\\b', 'g'), ' ');
+    for (const w of weekdays) rest = rest.replace(new RegExp('\\b' + w + '\\b', 'g'), ' ');
+
+    const names = rest.split(/\s*[-–—|]+\s*|\s{2,}/)
+      .map(s => s.trim())
+      .filter(s => s.length > 1 && !/^\d+$/.test(s) && !stopWords.has(s));
+
+    const maxSlots = currentSection.slotLabels.length || 1;
+    currentSection.entries.push({
+      day: dayNum,
+      month,
+      weekday,
+      slots: names.slice(0, Math.max(maxSlots, names.length)),
+    });
+  }
+
+  for (const sec of sections) {
+    if (sec.entries.length > 0 && sec.entries[0].slots.length > sec.slotLabels.length) {
+      sec.slotLabels = sec.entries[0].slots.map((_, i) => `Asignado ${i + 1}`);
+    }
+  }
+
+  return { sections };
+}
+
+function renderAcomodadoresEditor(data, rawText) {
+  const container = dom.acomodadoresEditor;
+  container.innerHTML = '';
+
+  if (rawText) {
+    const debug = document.createElement('details');
+    debug.className = 'ocr-raw-text';
+    debug.innerHTML = `<summary style="cursor:pointer;color:var(--color-text-muted);font-size:0.8rem;margin-bottom:0.5rem">Ver texto OCR crudo (${data.sections.reduce((n,s) => n + s.entries.length, 0)} entradas detectadas)</summary><pre style="background:var(--color-bg);border:1px solid var(--color-border);border-radius:var(--radius-sm);padding:0.75rem;font-size:0.75rem;max-height:300px;overflow:auto;white-space:pre-wrap">${rawText.replace(/</g,'&lt;')}</pre>`;
+    container.appendChild(debug);
+  }
+
+  for (const section of data.sections) {
+    const card = document.createElement('div');
+    card.className = 'admin-section-card';
+    card.innerHTML = `
+      <h4 class="admin-section-title">${section.title}</h4>
+      <div class="admin-section-entries" data-section="${section.id}">
+        ${section.entries.map((entry, ei) => renderEntryRow(section, entry, ei)).join('')}
+      </div>
+      <button type="button" class="ghost-btn admin-add-entry" data-section="${section.id}" style="margin-top:0.5rem;font-size:0.85rem">+ Agregar fecha</button>
+    `;
+    container.appendChild(card);
+  }
+
+  container.querySelectorAll('.admin-add-entry').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const secId = btn.dataset.section;
+      const sec = data.sections.find(s => s.id === secId);
+      if (!sec) return;
+      sec.entries.push({ day: '', month: '', weekday: '', slots: sec.slotLabels.map(() => '') });
+      renderAcomodadoresEditor(data);
+    });
+  });
+
+  container.querySelectorAll('.admin-delete-entry').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const secId = btn.dataset.section;
+      const idx = parseInt(btn.dataset.index, 10);
+      const sec = data.sections.find(s => s.id === secId);
+      if (!sec) return;
+      sec.entries.splice(idx, 1);
+      renderAcomodadoresEditor(data);
+    });
+  });
+
+  container.querySelectorAll('.admin-entry-field').forEach(input => {
+    input.addEventListener('change', () => {
+      const secId = input.dataset.section;
+      const idx = parseInt(input.dataset.index, 10);
+      const field = input.dataset.field;
+      const slotIdx = input.dataset.slot;
+      const sec = data.sections.find(s => s.id === secId);
+      if (!sec || !sec.entries[idx]) return;
+      if (slotIdx !== undefined) {
+        sec.entries[idx].slots[parseInt(slotIdx, 10)] = input.value;
+      } else {
+        sec.entries[idx][field] = input.value;
+      }
+    });
+  });
+}
+
+function renderEntryRow(section, entry, index) {
+  const maxSlots = Math.max(section.slotLabels.length, entry.slots.length || 1);
+  const slotInputs = Array.from({ length: maxSlots }, (_, i) => {
+    const label = section.slotLabels[i] || `Asignado ${i + 1}`;
+    const val = entry.slots[i] || '';
+    return `<input class="admin-entry-field" data-section="${section.id}" data-index="${index}" data-slot="${i}" type="text" value="${val}" placeholder="${label}" />`;
+  }).join('');
+
+  return `
+    <div class="admin-entry-row">
+      <input class="admin-entry-field" data-section="${section.id}" data-index="${index}" data-field="day" type="text" value="${entry.day}" placeholder="Dia" maxlength="2" style="width:3rem" />
+      <input class="admin-entry-field" data-section="${section.id}" data-index="${index}" data-field="month" type="text" value="${entry.month}" placeholder="Mes" style="width:5rem" />
+      <input class="admin-entry-field" data-section="${section.id}" data-index="${index}" data-field="weekday" type="text" value="${entry.weekday}" placeholder="Día" maxlength="3" style="width:3.5rem" />
+      ${slotInputs}
+      <button type="button" class="admin-delete-entry danger-btn" data-section="${section.id}" data-index="${index}" style="padding:0.3rem 0.6rem;font-size:0.75rem">X</button>
+    </div>
+  `;
+}
+
+async function onAcomodadoresSave() {
+  if (!pendingAcomodadoresData) return;
+  try {
+    await saveAcomodadoresData(pendingAcomodadoresData);
+    dom.acomodadoresOcrResult.hidden = true;
+    dom.ocrProgressText.textContent = 'Datos guardados y publicados.';
+    dom.acomodadoresOcrStatus.hidden = false;
+    dom.acomodadoresOcrStatus.classList.add('success');
+    pendingAcomodadoresData = null;
+    await renderPublicAcomodadores();
+  } catch (err) {
+    dom.acomodadoresUploadError.textContent = err?.message || 'No se pudo guardar.';
+    dom.acomodadoresUploadError.hidden = false;
   }
 }
 
 async function onAcomodadoresClear() {
-  if (!confirm('¿Borrar la imagen de acomodadores?')) return;
+  if (!confirm('¿Borrar todos los datos de acomodadores?')) return;
   try {
-    await clearAcomodadoresImage();
-    dom.acomodadoresPreview.hidden = true;
-    dom.acomodadoresPreviewImg.src = '';
-    dom.acomodadoresUploadStatus.hidden = true;
-    await loadAcomodadoresDisplay();
+    await clearAcomodadoresData();
+    dom.acomodadoresOcrResult.hidden = true;
+    dom.acomodadoresOcrStatus.hidden = true;
+    dom.acomodadoresEditor.innerHTML = '';
+    pendingAcomodadoresData = null;
+    await renderPublicAcomodadores();
   } catch (err) {
     dom.acomodadoresUploadError.textContent = err?.message || 'No se pudo borrar.';
     dom.acomodadoresUploadError.hidden = false;
   }
 }
 
-async function loadAcomodadoresDisplay() {
-  if (!firebaseConfigured()) {
-    dom.acomodadoresImageDisplay.hidden = true;
-    dom.acomodadoresDefaultTables.hidden = false;
-    return;
-  }
-  try {
-    const dataUrl = await loadAcomodadoresImage();
-    if (dataUrl) {
-      dom.acomodadoresDisplayImg.src = dataUrl;
-      dom.acomodadoresImageDisplay.hidden = false;
-      dom.acomodadoresDefaultTables.hidden = true;
-      dom.acomodadoresPreview.hidden = false;
-      dom.acomodadoresPreviewImg.src = dataUrl;
-    } else {
-      dom.acomodadoresImageDisplay.hidden = true;
-      dom.acomodadoresDefaultTables.hidden = false;
-      dom.acomodadoresPreview.hidden = true;
-      dom.acomodadoresPreviewImg.src = '';
-    }
-  } catch {
-    dom.acomodadoresImageDisplay.hidden = true;
-    dom.acomodadoresDefaultTables.hidden = false;
-  }
-}
-
 async function loadAdminAcomodadoresPreview() {
   if (!firebaseConfigured()) return;
   try {
-    const dataUrl = await loadAcomodadoresImage();
-    if (dataUrl) {
-      dom.acomodadoresPreview.hidden = false;
-      dom.acomodadoresPreviewImg.src = dataUrl;
-    } else {
-      dom.acomodadoresPreview.hidden = true;
-      dom.acomodadoresPreviewImg.src = '';
+    const data = await loadAcomodadoresData();
+    pendingAcomodadoresData = data;
+    renderAcomodadoresEditor(data);
+    dom.acomodadoresOcrResult.hidden = false;
+  } catch {
+    dom.acomodadoresOcrResult.hidden = true;
+  }
+}
+
+async function renderPublicAcomodadores() {
+  const container = dom.acomodadoresDefaultTables;
+  if (!container) return;
+  try {
+    const data = await loadAcomodadoresData();
+    container.innerHTML = '';
+    for (const section of data.sections) {
+      const card = document.createElement('div');
+      card.className = 'acomodadores-card';
+      const headerClass = section.id === 'acomodadores' ? 'acomodadores-ac' : section.id === 'microfonos' ? 'acomodadores-mic' : 'acomodadores-plat';
+      card.innerHTML = `
+        <div class="acomodadores-header ${headerClass}"><h2>${section.title}</h2></div>
+        <div class="acomodadores-body">
+          <div class="acomodadores-list">
+            ${section.entries.map(entry => {
+              const weekdayClass = entry.weekday === 'SAB' ? 'row-sab' : 'row-mie';
+              const badgeClass = entry.weekday === 'SAB' ? 'badge-sab' : 'badge-mie';
+              const badges = entry.weekday === 'SAB' ? 'SAB' : entry.weekday === 'MIE' ? 'MIE' : entry.weekday;
+              const maxSlots = Math.max(section.slotLabels.length, entry.slots.length);
+              const pills = Array.from({ length: maxSlots }, (_, i) => {
+                const label = section.slotLabels[i] || '';
+                const name = entry.slots[i] || '';
+                if (!name) return '';
+                const labelHtml = label ? `<span class="person-slot-label">${label}</span>` : '';
+                return `<div class="person-slot">${labelHtml}<span class="person-pill">${name}</span></div>`;
+              }).join('');
+              return `
+                <div class="acomodadores-row ${weekdayClass}">
+                  <div class="row-date"><span class="date-num">${entry.day}</span><span class="date-mes">${entry.month}</span></div>
+                  <div class="row-badge ${badgeClass}">${badges}</div>
+                  <div class="row-people">${pills}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `;
+      container.appendChild(card);
     }
   } catch {
-    dom.acomodadoresPreview.hidden = true;
+    container.innerHTML = '';
   }
 }
 

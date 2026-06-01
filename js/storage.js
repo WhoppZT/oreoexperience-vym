@@ -202,40 +202,95 @@ export async function clearAll() {
 export const savePdfBlob = savePdfBlobLocal;
 export const loadPdfBlob = loadPdfBlobLocal;
 
-// ---------------------- acomodadores image ----------------------
+// ---------------------- acomodadores data ----------------------
 
 const FS_ACOMODADORES_COLLECTION = 'acomodadores';
 const FS_ACOMODADORES_DOC = 'current';
 
-export async function saveAcomodadoresImage(dataUrl) {
-  if (!firebaseConfigured()) {
-    throw new Error('Firebase no está configurado.');
-  }
+const DEFAULT_ACOMODADORES = {
+  sections: [
+    {
+      id: 'acomodadores',
+      title: 'Acomodadores',
+      slotLabels: ['Parqueadero', 'Entrada'],
+      entries: [
+        { day: '30', month: 'MAYO', weekday: 'SAB', slots: ['JUAN C. JAIMES', 'RAMIRO ANDRES'] },
+        { day: '03', month: 'JUNIO', weekday: 'MIE', slots: ['JOHN MARTINEZ', 'CARLOS RUEDA'] },
+        { day: '06', month: 'JUNIO', weekday: 'SAB', slots: ['JAIRO R', 'ELIHU R'] },
+        { day: '10', month: 'JUNIO', weekday: 'MIE', slots: ['HECTOR SIERRA', 'SAMUEL DURAN'] },
+        { day: '13', month: 'JUNIO', weekday: 'SAB', slots: ['RAMIRO ANDRES', 'CARLOS LEON'] },
+        { day: '17', month: 'JUNIO', weekday: 'MIE', slots: ['ELIHU RUEDA', 'WILMER DURAN'] },
+        { day: '20', month: 'JUNIO', weekday: 'SAB', slots: ['CESAR ATAY', 'JAIRO R'] },
+        { day: '24', month: 'JUNIO', weekday: 'MIE', slots: ['CARLOS RUEDA', 'ALBERTO T'] },
+        { day: '27', month: 'JUNIO', weekday: 'SAB', slots: ['RAMIRO ANDRES', 'MAURICIO P'] },
+      ],
+    },
+    {
+      id: 'microfonos',
+      title: 'Microfonos',
+      slotLabels: ['Asignado 1', 'Asignado 2'],
+      entries: [
+        { day: '30', month: 'MAYO', weekday: 'SAB', slots: ['SAMUEL DURAN', 'CARLOS RUEDA'] },
+        { day: '03', month: 'JUNIO', weekday: 'MIE', slots: ['PEDRO D', 'JHON MARTINEZ'] },
+        { day: '06', month: 'JUNIO', weekday: 'SAB', slots: ['WILMER D', 'ANDRES LOPEZ'] },
+        { day: '10', month: 'JUNIO', weekday: 'MIE', slots: ['ELIHU R', 'JESUS MARCILLO'] },
+        { day: '13', month: 'JUNIO', weekday: 'SAB', slots: ['HECTOR S', 'JUAN C JAIMES'] },
+        { day: '17', month: 'JUNIO', weekday: 'MIE', slots: ['RAMIRO A', 'JAIRO RAMIREZ'] },
+        { day: '20', month: 'JUNIO', weekday: 'SAB', slots: ['CARLOS R', 'RAMIRO A'] },
+        { day: '24', month: 'JUNIO', weekday: 'MIE', slots: ['RAMIRO R', 'MAURICIO P'] },
+        { day: '27', month: 'JUNIO', weekday: 'SAB', slots: ['SAMUEL DURAN', 'CESAR ATAY'] },
+      ],
+    },
+    {
+      id: 'plataforma',
+      title: 'Plataforma',
+      slotLabels: ['Asignado'],
+      entries: [
+        { day: '30', month: 'MAYO', weekday: 'SAB', slots: ['JOHN MARTINEZ'] },
+        { day: '03', month: 'JUNIO', weekday: 'MIE', slots: ['WILMER DURAN'] },
+        { day: '06', month: 'JUNIO', weekday: 'SAB', slots: ['RAMIRO RINCON'] },
+        { day: '10', month: 'JUNIO', weekday: 'MIE', slots: ['HECTOR SIERRA'] },
+        { day: '13', month: 'JUNIO', weekday: 'SAB', slots: ['PEDRO DUARTE'] },
+        { day: '17', month: 'JUNIO', weekday: 'MIE', slots: ['ANDRES LOPEZ'] },
+        { day: '20', month: 'JUNIO', weekday: 'SAB', slots: ['ELIHU RUEDA'] },
+        { day: '24', month: 'JUNIO', weekday: 'MIE', slots: ['JHON MARTINEZ'] },
+        { day: '27', month: 'JUNIO', weekday: 'SAB', slots: ['JESUS MARCILLO'] },
+      ],
+    },
+  ],
+};
+
+export async function saveAcomodadoresData(data) {
+  if (!firebaseConfigured()) throw new Error('Firebase no está configurado.');
   const fs = await getFirestore();
   const { doc, setDoc, serverTimestamp } = fs.__helpers;
   await setDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC), {
-    imageData: dataUrl,
+    sections: data.sections,
     updatedAt: serverTimestamp(),
   });
 }
 
-export async function loadAcomodadoresImage() {
-  if (!firebaseConfigured()) return null;
+export async function loadAcomodadoresData() {
+  if (!firebaseConfigured()) return DEFAULT_ACOMODADORES;
   const fs = await getFirestore();
   const { doc, getDoc } = fs.__helpers;
-  const snap = await getDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC));
-  if (!snap.exists()) return null;
-  const data = snap.data();
-  return data?.imageData || null;
+  try {
+    const snap = await getDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC));
+    if (snap.exists() && snap.data()?.sections) {
+      return { sections: snap.data().sections };
+    }
+  } catch (err) {
+    console.warn('Error loading acomodadores data:', err);
+  }
+  return DEFAULT_ACOMODADORES;
 }
 
-export async function clearAcomodadoresImage() {
+export async function clearAcomodadoresData() {
   if (!firebaseConfigured()) return;
   const fs = await getFirestore();
-  const { doc, deleteDoc } = fs.__helpers;
-  try {
-    await deleteDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC));
-  } catch (err) {
-    if (err?.code !== 'not-found') throw err;
-  }
+  const { doc, setDoc, serverTimestamp } = fs.__helpers;
+  await setDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC), {
+    sections: [],
+    updatedAt: serverTimestamp(),
+  });
 }
