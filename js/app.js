@@ -664,11 +664,13 @@ async function renderPublicAcomodadores() {
       if (!week) continue;
       for (const wEntry of week.entries) {
         const entry = wEntry.entry;
-        const key = `${entry.day}-${entry.month}-${entry.weekday}`;
-        if (!dayMap.has(key)) {
-          dayMap.set(key, { day: entry.day, month: entry.month, weekday: entry.weekday, sections: [] });
+        if (!dayMap.has(entry.weekday)) {
+          dayMap.set(entry.weekday, { weekday: entry.weekday, dates: {}, sections: [] });
         }
-        dayMap.get(key).sections.push({
+        const dayData = dayMap.get(entry.weekday);
+        const dateKey = `${entry.day}-${entry.month}`;
+        dayData.dates[dateKey] = (dayData.dates[dateKey] || 0) + 1;
+        dayData.sections.push({
           id: section.id,
           title: section.title,
           slotLabels: section.slotLabels,
@@ -677,8 +679,15 @@ async function renderPublicAcomodadores() {
       }
     }
 
+    const days = [...dayMap.values()].map(d => {
+      const entries = Object.entries(d.dates);
+      entries.sort((a, b) => b[1] - a[1]);
+      const [topDate] = entries[0] || [];
+      const [day, month] = (topDate || '01-ENERO').split('-');
+      return { ...d, day, month };
+    });
     const dayOrder = { MIE: 0, JUE: 1, VIE: 2, SAB: 3, DOM: 4 };
-    const days = [...dayMap.values()].sort((a, b) => (dayOrder[a.weekday] ?? 9) - (dayOrder[b.weekday] ?? 9));
+    days.sort((a, b) => (dayOrder[a.weekday] ?? 9) - (dayOrder[b.weekday] ?? 9));
 
     if (days.length === 0) {
       container.innerHTML = '<p class="acomodadores-empty">Sin asignaciones para esta semana.</p>';
