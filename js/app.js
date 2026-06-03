@@ -671,16 +671,25 @@ async function renderPublicAcomodadores() {
     const data = await loadAcomodadoresData();
     const refYear = new Date().getFullYear();
 
-    const sectionsWeeks = data.sections.map(section => ({
-      ...section,
-      weeks: groupEntriesByWeek(section.entries, refYear),
-    }));
-    const totalWeeks = sectionsWeeks.reduce((max, s) => Math.max(max, s.weeks.length), 0);
+    const sectionsWeeks = data.sections
+      .filter(s => s.id !== 'salidas_predicacion')
+      .map(section => ({
+        ...section,
+        weeks: groupEntriesByWeek(section.entries, refYear),
+      }));
+
+    const salidasSection = data.sections.find(s => s.id === 'salidas_predicacion');
+
+    const totalWeeks = sectionsWeeks.length > 0
+      ? sectionsWeeks.reduce((max, s) => Math.max(max, s.weeks.length), 0)
+      : (salidasSection ? 1 : 0);
     acoState.weeks = Array.from({ length: totalWeeks }, (_, i) => i);
 
-    const { index } = findAcomodadoresWeekIndex(
-      acoState.weeks.map(i => ({ startMs: sectionsWeeks.reduce((min, s) => Math.min(min, s.weeks[i]?.startMs ?? Infinity), Infinity) })),
-    );
+    const { index } = sectionsWeeks.length > 0
+      ? findAcomodadoresWeekIndex(
+          acoState.weeks.map(i => ({ startMs: sectionsWeeks.reduce((min, s) => Math.min(min, s.weeks[i]?.startMs ?? Infinity), Infinity) })),
+        )
+      : { index: 0 };
     if (acoState.viewIndex >= totalWeeks || acoState.viewIndex < 0) acoState.viewIndex = 0;
     if (!acoState._navigated) {
       acoState.viewIndex = index >= 0 ? index : 0;
@@ -735,6 +744,26 @@ async function renderPublicAcomodadores() {
       }
     }
 
+    // Add salidas_predicacion entries directly (recurring weekly schedule)
+    if (salidasSection) {
+      for (const entry of salidasSection.entries) {
+        if (!dayMap.has(entry.weekday)) {
+          dayMap.set(entry.weekday, { weekday: entry.weekday, dates: {}, sections: [] });
+        }
+        const dayData = dayMap.get(entry.weekday);
+        const dateKey = `${entry.day}-${entry.month}`;
+        dayData.dates[dateKey] = (dayData.dates[dateKey] || 0) + 1;
+        dayData.sections.push({
+          id: salidasSection.id,
+          title: salidasSection.title,
+          slotLabels: salidasSection.slotLabels,
+          slots: entry.slots,
+          hour: entry.hour || '',
+          modality: entry.modality || '',
+        });
+      }
+    }
+
     const days = [...dayMap.values()].map(d => {
       const entries = Object.entries(d.dates);
       entries.sort((a, b) => b[1] - a[1]);
@@ -742,7 +771,7 @@ async function renderPublicAcomodadores() {
       const [day, month] = (topDate || '01-ENERO').split('-');
       return { ...d, day, month };
     });
-    const dayOrder = { MIE: 0, JUE: 1, VIE: 2, SAB: 3, DOM: 4 };
+    const dayOrder = { LUN: -1, MAR: 0, MIE: 1, JUE: 2, VIE: 3, SAB: 4, DOM: 5 };
     days.sort((a, b) => (dayOrder[a.weekday] ?? 9) - (dayOrder[b.weekday] ?? 9));
 
     if (days.length === 0) {
@@ -756,6 +785,13 @@ async function renderPublicAcomodadores() {
       const dayClass = day.weekday === 'SAB' ? 'day-card-sab' : 'day-card-mie';
       const fullDay = weekdayFull[day.weekday] || day.weekday;
       const meeting = meetingType[day.weekday] || '';
+      const isRealDate = MONTHS_ES[day.month] !== undefined;
+      const dateBlockHtml = isRealDate ? `
+          <div class="day-date-block">
+            <span class="day-num">${day.day}</span>
+            <span class="day-mes">${day.month}</span>
+          </div>
+        ` : '';
 
       card.innerHTML = `
         <div class="day-header ${dayClass}">
@@ -763,10 +799,7 @@ async function renderPublicAcomodadores() {
             <span class="day-weekday">${fullDay}</span>
             <span class="day-meeting">${meeting}</span>
           </div>
-          <div class="day-date-block">
-            <span class="day-num">${day.day}</span>
-            <span class="day-mes">${day.month}</span>
-          </div>
+          ${dateBlockHtml}
         </div>
         <div class="day-body">
           ${day.sections.map(sec => {
