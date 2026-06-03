@@ -1116,13 +1116,13 @@ button:active {
   }
 
   .section-tabs {
-    padding: 1rem 0.85rem 0;
-    gap: 0.35rem;
+    padding: 1rem 0.5rem 0;
+    gap: 0.3rem;
   }
 
   .tab-btn {
-    padding: 0.6rem 0.5rem;
-    font-size: 0.82rem;
+    padding: 0.55rem 0.4rem;
+    font-size: 0.78rem;
     max-width: none;
   }
 
@@ -1178,14 +1178,13 @@ button:active {
   display: flex;
   justify-content: center;
   gap: 0.5rem;
-  padding: 1.25rem 1.25rem 0;
+  padding: 1.25rem 1rem 0;
   max-width: 980px;
   margin: 0 auto;
 }
 
 .tab-btn {
   flex: 1;
-  max-width: 220px;
   padding: 0.75rem 1.5rem;
   border: 2px solid var(--color-border-strong);
   border-bottom: none;
