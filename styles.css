@@ -1120,8 +1120,10 @@ button:active {
   }
 
   .tab-btn {
-    padding: 0.6rem 1rem;
-    font-size: 0.95rem;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    max-width: none;
+    min-width: fit-content;
   }
 
   .acomodadores-icon {
@@ -1179,6 +1181,8 @@ button:active {
   padding: 1.25rem 1.25rem 0;
   max-width: 980px;
   margin: 0 auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tab-btn {
@@ -1196,6 +1200,7 @@ button:active {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
   text-align: center;
+  white-space: nowrap;
 }
 
 .tab-btn:hover {
@@ -1582,12 +1587,6 @@ button:active {
     padding: 0.65rem;
   }
 
-  .salida-row {
-    grid-template-columns: 1fr 1fr;
-    gap: 0.3rem;
-    padding: 0.6rem 0.75rem;
-  }
-
   .salida-entry {
     grid-template-columns: 1fr 1fr;
     gap: 0.4rem;
@@ -1596,6 +1595,24 @@ button:active {
   .salida-captain {
     justify-self: start;
     grid-column: 1 / -1;
+  }
+
+  .salida-hour {
+    font-size: 0.9rem;
+    min-width: auto;
+  }
+
+  .salidas-day-name {
+    font-size: 1rem;
+    letter-spacing: 1px;
+  }
+
+  .salidas-day-header {
+    padding: 0.7rem 1rem;
+  }
+
+  .salidas-day-entries {
+    padding: 0.4rem 0.75rem;
   }
 
   .day-section {
