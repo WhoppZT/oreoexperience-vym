@@ -680,23 +680,24 @@ async function renderPublicAcomodadores() {
 
     const salidasSection = data.sections.find(s => s.id === 'salidas_predicacion');
 
-    const totalWeeks = sectionsWeeks.length > 0
+    const realWeeksCount = sectionsWeeks.length > 0
       ? sectionsWeeks.reduce((max, s) => Math.max(max, s.weeks.length), 0)
-      : (salidasSection ? 1 : 0);
+      : 0;
+    const totalWeeks = Math.max(realWeeksCount, 1);
     acoState.weeks = Array.from({ length: totalWeeks }, (_, i) => i);
 
-    const { index } = sectionsWeeks.length > 0
+    const { index } = realWeeksCount > 0
       ? findAcomodadoresWeekIndex(
           acoState.weeks.map(i => ({ startMs: sectionsWeeks.reduce((min, s) => Math.min(min, s.weeks[i]?.startMs ?? Infinity), Infinity) })),
         )
-      : { index: 0 };
+      : { index: 0, kind: 'current' };
     if (acoState.viewIndex >= totalWeeks || acoState.viewIndex < 0) acoState.viewIndex = 0;
     if (!acoState._navigated) {
       acoState.viewIndex = index >= 0 ? index : 0;
     }
 
     if (dom.acomodadoresNav) {
-      dom.acomodadoresNav.hidden = totalWeeks <= 1;
+      dom.acomodadoresNav.hidden = realWeeksCount <= 1;
       dom.acomodadoresPrevBtn.disabled = acoState.viewIndex <= 0;
       dom.acomodadoresNextBtn.disabled = acoState.viewIndex >= totalWeeks - 1;
       const currentWeek = sectionsWeeks[0]?.weeks[acoState.viewIndex];
