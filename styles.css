@@ -1116,12 +1116,12 @@ button:active {
   }
 
   .section-tabs {
-    padding: 1rem 0 0;
+    padding: 1rem 0.85rem 0;
   }
 
   .tab-btn {
-    padding: 0.6rem 0.75rem;
-    font-size: 0.85rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
   }
 
   .acomodadores-icon {
@@ -1174,11 +1174,11 @@ button:active {
 /* Section tabs */
 .section-tabs {
   display: flex;
-  gap: 0;
-  padding: 1.25rem 0 0;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 1.25rem 1.25rem 0;
   max-width: 980px;
   margin: 0 auto;
-  border-bottom: 2px solid var(--color-border);
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
@@ -1190,20 +1190,19 @@ button:active {
 
 .tab-btn {
   flex: 0 0 auto;
-  padding: 0.75rem 1rem;
-  border: none;
-  border-bottom: 3px solid transparent;
-  border-radius: 0;
-  background: transparent;
+  padding: 0.75rem 1.5rem;
+  border: 2px solid var(--color-border-strong);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: var(--color-surface);
   color: var(--color-muted);
   font-family: inherit;
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  transition: background 0.15s, color 0.15s;
   text-align: center;
   white-space: nowrap;
-  margin-bottom: -2px;
 }
 
 .tab-btn:hover {
@@ -1212,11 +1211,13 @@ button:active {
 }
 
 .tab-btn.active {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
 }
 
 .tab-content {
+  border-top: 2px solid var(--color-primary);
   padding-top: 0.5rem;
 }
 
