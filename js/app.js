@@ -1095,36 +1095,58 @@ async function renderPublicSalidas() {
 
     const sorted = [...entries].sort((a, b) => (WEEKDAY_ORDER[a.weekday] ?? 9) - (WEEKDAY_ORDER[b.weekday] ?? 9));
 
-    container.innerHTML = '';
-    const card = document.createElement('div');
-    card.className = 'acomodadores-day-card';
-
-    let rowsHtml = '';
+    // Group by weekday
+    const grouped = new Map();
     for (const entry of sorted) {
-      const day = WEEKDAY_FULL[entry.weekday] || entry.weekday;
-      const modalityCls = entry.modality === 'Zoom' ? 'modality-zoom' : 'modality-presencial';
-      rowsHtml += `
-        <div class="salida-row">
-          <span class="salida-day">${day}</span>
-          <span class="salida-hour">${entry.hour || ''}</span>
-          <span class="salida-modality ${modalityCls}">${entry.modality || ''}</span>
-          <span class="person-pill">${entry.captain || ''}</span>
-        </div>
-      `;
+      if (!grouped.has(entry.weekday)) grouped.set(entry.weekday, []);
+      grouped.get(entry.weekday).push(entry);
     }
 
-    card.innerHTML = `
-      <div class="day-header day-card-salidas">
-        <div class="day-header-left">
-          <span class="day-weekday">SALIDAS DE PREDICACIÓN</span>
-          <span class="day-meeting">Horario semanal</span>
+    const dayColors = {
+      LUN: { bg: '#eff6ff', border: '#3b82f6', text: '#1e40af' },
+      MAR: { bg: '#f0fdf4', border: '#22c55e', text: '#166534' },
+      MIE: { bg: '#fefce8', border: '#eab308', text: '#854d0e' },
+      JUE: { bg: '#fdf4ff', border: '#a855f7', text: '#6b21a8' },
+      VIE: { bg: '#fff7ed', border: '#f97316', text: '#9a3412' },
+      SAB: { bg: '#fef2f2', border: '#ef4444', text: '#991b1b' },
+      DOM: { bg: '#f0f9ff', border: '#0ea5e9', text: '#0c4a6e' },
+    };
+
+    container.innerHTML = '';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'salidas-grid';
+
+    for (const [weekday, dayEntries] of grouped) {
+      const colors = dayColors[weekday] || { bg: '#f9fafb', border: '#6b7280', text: '#374151' };
+      const card = document.createElement('div');
+      card.className = 'salidas-day-card';
+      card.style.setProperty('--day-bg', colors.bg);
+      card.style.setProperty('--day-border', colors.border);
+      card.style.setProperty('--day-text', colors.text);
+
+      let entriesHtml = '';
+      for (const e of dayEntries) {
+        const modalityCls = e.modality === 'Zoom' ? 'modality-zoom' : 'modality-presencial';
+        entriesHtml += `
+          <div class="salida-entry">
+            <span class="salida-hour">${e.hour || ''}</span>
+            <span class="salida-modality ${modalityCls}">${e.modality || ''}</span>
+            <span class="salida-captain">${e.captain || ''}</span>
+          </div>
+        `;
+      }
+
+      card.innerHTML = `
+        <div class="salidas-day-header">
+          <span class="salidas-day-name">${WEEKDAY_FULL[weekday] || weekday}</span>
         </div>
-      </div>
-      <div class="day-body salidas-body">
-        ${rowsHtml}
-      </div>
-    `;
-    container.appendChild(card);
+        <div class="salidas-day-entries">
+          ${entriesHtml}
+        </div>
+      `;
+      wrapper.appendChild(card);
+    }
+    container.appendChild(wrapper);
   } catch {
     container.innerHTML = '';
   }

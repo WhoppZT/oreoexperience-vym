@@ -1325,29 +1325,74 @@ button:active {
   padding: 0;
 }
 
-.salida-row {
+.salidas-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.salidas-day-card {
+  background: var(--color-surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-border);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.salidas-day-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.salidas-day-header {
+  background: var(--day-bg, #f9fafb);
+  border-left: 5px solid var(--day-border, #6b7280);
+  padding: 0.85rem 1.25rem;
+}
+
+.salidas-day-name {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--day-text, #374151);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.salidas-day-entries {
+  padding: 0.5rem 1rem;
+}
+
+.salida-entry {
   display: grid;
-  grid-template-columns: 1.5fr 1fr 1fr 1.5fr auto;
-  gap: 0.5rem;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.75rem;
   align-items: center;
-  padding: 0.75rem 1rem;
+  padding: 0.65rem 0.25rem;
   border-bottom: 1px solid var(--color-border);
 }
 
-.salida-row:last-child {
+.salida-entry:last-child {
   border-bottom: none;
 }
 
-.salida-day {
+.salida-hour {
+  font-size: 1rem;
   font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--color-text);
+  color: var(--color-primary);
+  min-width: 5rem;
 }
 
-.salida-hour {
-  font-size: 0.9rem;
-  color: var(--color-primary);
+.salida-captain {
+  font-size: 1rem;
   font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+  padding: 0.3rem 0.85rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(109, 40, 217, 0.16);
+  white-space: nowrap;
+  justify-self: end;
 }
 
 .salida-modality {
@@ -1541,6 +1586,16 @@ button:active {
     grid-template-columns: 1fr 1fr;
     gap: 0.3rem;
     padding: 0.6rem 0.75rem;
+  }
+
+  .salida-entry {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.4rem;
+  }
+
+  .salida-captain {
+    justify-self: start;
+    grid-column: 1 / -1;
   }
 
   .day-section {
