@@ -1120,9 +1120,8 @@ button:active {
   }
 
   .tab-btn {
-    padding: 0.6rem 0.25rem;
-    font-size: 0.8rem;
-    min-width: 0;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
   }
 
   .acomodadores-icon {
@@ -1175,17 +1174,23 @@ button:active {
 /* Section tabs */
 .section-tabs {
   display: flex;
-  justify-content: stretch;
   gap: 0;
   padding: 1.25rem 0 0;
   max-width: 980px;
   margin: 0 auto;
-  border-bottom: 2px solid var(--color-border-strong);
+  border-bottom: 2px solid var(--color-border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.section-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-btn {
-  flex: 1;
-  padding: 0.75rem 0.5rem;
+  flex: 0 0 auto;
+  padding: 0.75rem 1rem;
   border: none;
   border-bottom: 3px solid transparent;
   border-radius: 0;
