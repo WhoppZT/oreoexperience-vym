@@ -257,23 +257,6 @@ const DEFAULT_ACOMODADORES = {
         { day: '27', month: 'JUNIO', weekday: 'SAB', slots: ['JESUS MARCILLO'] },
       ],
     },
-    {
-      id: 'salidas_predicacion',
-      title: 'Salidas de Predicación',
-      slotLabels: ['Capitán'],
-      entries: [
-        { day: '01', month: 'LUNES', weekday: 'LUN', hour: '4:00 p.m.', modality: 'Presencial', slots: ['Ramiro Rincón'] },
-        { day: '02', month: 'MARTES', weekday: 'MAR', hour: '4:00 p.m.', modality: 'Presencial', slots: ['Carlos Rueda'] },
-        { day: '02', month: 'MARTES', weekday: 'MAR', hour: '7:00 p.m.', modality: 'Presencial', slots: ['Jhon Martínez'] },
-        { day: '03', month: 'MIÉRCOLES', weekday: 'MIE', hour: '8:30 a.m.', modality: 'Presencial', slots: ['Hector Sierra'] },
-        { day: '04', month: 'JUEVES', weekday: 'JUE', hour: '9:00 a.m.', modality: 'Presencial', slots: ['Pedro Duarte'] },
-        { day: '04', month: 'JUEVES', weekday: 'JUE', hour: '4:00 p.m.', modality: 'Presencial', slots: ['Carlos León'] },
-        { day: '05', month: 'VIERNES', weekday: 'VIE', hour: '4:00 p.m.', modality: 'Presencial', slots: ['Jesús Marcillo'] },
-        { day: '05', month: 'VIERNES', weekday: 'VIE', hour: '7:00 p.m.', modality: 'Zoom', slots: ['Elihú Rueda'] },
-        { day: '06', month: 'SÁBADO', weekday: 'SAB', hour: '9:00 a.m.', modality: 'Presencial', slots: ['Jesús Torres'] },
-        { day: '07', month: 'DOMINGO', weekday: 'DOM', hour: '9:00 a.m.', modality: 'Presencial', slots: ['Ramiro Andrés'] },
-      ],
-    },
   ],
 };
 
@@ -294,13 +277,7 @@ export async function loadAcomodadoresData() {
   try {
     const snap = await getDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC));
     if (snap.exists() && snap.data()?.sections) {
-      const sections = snap.data().sections;
-      const hasSalidas = sections.some(s => s.id === 'salidas_predicacion');
-      if (!hasSalidas) {
-        const defaultSalidas = DEFAULT_ACOMODADORES.sections.find(s => s.id === 'salidas_predicacion');
-        if (defaultSalidas) sections.push(defaultSalidas);
-      }
-      return { sections };
+      return { sections: snap.data().sections };
     }
   } catch (err) {
     console.warn('Error loading acomodadores data:', err);
@@ -314,6 +291,59 @@ export async function clearAcomodadoresData() {
   const { doc, setDoc, serverTimestamp } = fs.__helpers;
   await setDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC), {
     sections: [],
+    updatedAt: serverTimestamp(),
+  });
+}
+
+// ---------------------- salidas de predicacion data ----------------------
+
+const FS_SALIDAS_COLLECTION = 'salidas_predicacion';
+const FS_SALIDAS_DOC = 'current';
+
+const DEFAULT_SALIDAS = [
+  { weekday: 'LUN', hour: '4:00 p.m.', modality: 'Presencial', captain: 'Ramiro Rincón' },
+  { weekday: 'MAR', hour: '4:00 p.m.', modality: 'Presencial', captain: 'Carlos Rueda' },
+  { weekday: 'MAR', hour: '7:00 p.m.', modality: 'Presencial', captain: 'Jhon Martínez' },
+  { weekday: 'MIE', hour: '8:30 a.m.', modality: 'Presencial', captain: 'Hector Sierra' },
+  { weekday: 'JUE', hour: '9:00 a.m.', modality: 'Presencial', captain: 'Pedro Duarte' },
+  { weekday: 'JUE', hour: '4:00 p.m.', modality: 'Presencial', captain: 'Carlos León' },
+  { weekday: 'VIE', hour: '4:00 p.m.', modality: 'Presencial', captain: 'Jesús Marcillo' },
+  { weekday: 'VIE', hour: '7:00 p.m.', modality: 'Zoom', captain: 'Elihú Rueda' },
+  { weekday: 'SAB', hour: '9:00 a.m.', modality: 'Presencial', captain: 'Jesús Torres' },
+  { weekday: 'DOM', hour: '9:00 a.m.', modality: 'Presencial', captain: 'Ramiro Andrés' },
+];
+
+export async function saveSalidasData(entries) {
+  if (!firebaseConfigured()) throw new Error('Firebase no está configurado.');
+  const fs = await getFirestore();
+  const { doc, setDoc, serverTimestamp } = fs.__helpers;
+  await setDoc(doc(fs, FS_SALIDAS_COLLECTION, FS_SALIDAS_DOC), {
+    entries,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function loadSalidasData() {
+  if (!firebaseConfigured()) return DEFAULT_SALIDAS;
+  const fs = await getFirestore();
+  const { doc, getDoc } = fs.__helpers;
+  try {
+    const snap = await getDoc(doc(fs, FS_SALIDAS_COLLECTION, FS_SALIDAS_DOC));
+    if (snap.exists() && snap.data()?.entries) {
+      return snap.data().entries;
+    }
+  } catch (err) {
+    console.warn('Error loading salidas data:', err);
+  }
+  return DEFAULT_SALIDAS;
+}
+
+export async function clearSalidasData() {
+  if (!firebaseConfigured()) return;
+  const fs = await getFirestore();
+  const { doc, setDoc, serverTimestamp } = fs.__helpers;
+  await setDoc(doc(fs, FS_SALIDAS_COLLECTION, FS_SALIDAS_DOC), {
+    entries: [],
     updatedAt: serverTimestamp(),
   });
 }

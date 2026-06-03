@@ -2,6 +2,7 @@ import { parsePdfFile } from './pdf-parser.js';
 import * as pdfjsLib from '../vendor/pdf.min.mjs';
 import { saveWeeks, loadWeeks, clearAll } from './storage.js';
 import { saveAcomodadoresData, loadAcomodadoresData, clearAcomodadoresData } from './storage.js';
+import { saveSalidasData, loadSalidasData, clearSalidasData } from './storage.js';
 import { verifyCredentials, isLoggedIn, logout, watchAuthState } from './auth.js';
 import { firebaseConfigured } from './firebase.js';
 import { renderWeek, findCurrentWeekIndex, formatTodayLabel } from './ui.js';
@@ -56,6 +57,20 @@ const dom = {
   acomodadoresNextBtn: document.getElementById('acomodadores-next-btn'),
   acomodadoresPosition: document.getElementById('acomodadores-position'),
 
+  // Salidas de Predicación (public)
+  salidasDefaultTables: document.getElementById('salidas-default-tables'),
+
+  // Salidas admin
+  salidasUploadForm: document.getElementById('salidas-upload-form'),
+  salidasFileInput: document.getElementById('salidas-file'),
+  salidasOcrStatus: document.getElementById('salidas-ocr-status'),
+  salidasOcrProgressText: document.getElementById('salidas-ocr-progress-text'),
+  salidasUploadError: document.getElementById('salidas-upload-error'),
+  salidasClearBtn: document.getElementById('salidas-clear-btn'),
+  salidasOcrResult: document.getElementById('salidas-ocr-result'),
+  salidasEditor: document.getElementById('salidas-editor'),
+  salidasSaveBtn: document.getElementById('salidas-save-btn'),
+
   // Install prompt
   installPrompt: document.getElementById('install-prompt'),
   installBtn: document.getElementById('install-btn'),
@@ -80,6 +95,7 @@ async function init() {
   }
   await refreshFromStorage();
   await renderPublicAcomodadores();
+  await renderPublicSalidas();
 }
 
 function attachListeners() {
@@ -119,6 +135,11 @@ function attachListeners() {
   dom.acomodadoresUploadForm.addEventListener('submit', onAcomodadoresUpload);
   dom.acomodadoresClearBtn.addEventListener('click', onAcomodadoresClear);
   dom.acomodadoresSaveBtn?.addEventListener('click', onAcomodadoresSave);
+
+  // Salidas de Predicación
+  if (dom.salidasUploadForm) dom.salidasUploadForm.addEventListener('submit', onSalidasUpload);
+  if (dom.salidasClearBtn) dom.salidasClearBtn.addEventListener('click', onSalidasClear);
+  if (dom.salidasSaveBtn) dom.salidasSaveBtn.addEventListener('click', onSalidasSave);
 
   // Refresh button
   const refreshBtn = document.getElementById('refresh-btn');
@@ -165,7 +186,13 @@ function switchAdminTab(tabId) {
   dom.adminTabAsignaciones.classList.toggle('active', tabId === 'asignaciones');
   dom.adminTabAcomodadores.hidden = tabId !== 'acomodadores';
   dom.adminTabAcomodadores.classList.toggle('active', tabId === 'acomodadores');
+  const adminTabSalidas = document.getElementById('admin-tab-salidas');
+  if (adminTabSalidas) {
+    adminTabSalidas.hidden = tabId !== 'salidas';
+    adminTabSalidas.classList.toggle('active', tabId === 'salidas');
+  }
   if (tabId === 'acomodadores') loadAdminAcomodadoresPreview();
+  if (tabId === 'salidas') loadAdminSalidasPreview();
 }
 
 async function forceRefresh() {
@@ -671,33 +698,23 @@ async function renderPublicAcomodadores() {
     const data = await loadAcomodadoresData();
     const refYear = new Date().getFullYear();
 
-    const sectionsWeeks = data.sections
-      .filter(s => s.id !== 'salidas_predicacion')
-      .map(section => ({
-        ...section,
-        weeks: groupEntriesByWeek(section.entries, refYear),
-      }));
-
-    const salidasSection = data.sections.find(s => s.id === 'salidas_predicacion');
-
-    const realWeeksCount = sectionsWeeks.length > 0
-      ? sectionsWeeks.reduce((max, s) => Math.max(max, s.weeks.length), 0)
-      : 0;
-    const totalWeeks = Math.max(realWeeksCount, 1);
+    const sectionsWeeks = data.sections.map(section => ({
+      ...section,
+      weeks: groupEntriesByWeek(section.entries, refYear),
+    }));
+    const totalWeeks = sectionsWeeks.reduce((max, s) => Math.max(max, s.weeks.length), 0);
     acoState.weeks = Array.from({ length: totalWeeks }, (_, i) => i);
 
-    const { index } = realWeeksCount > 0
-      ? findAcomodadoresWeekIndex(
-          acoState.weeks.map(i => ({ startMs: sectionsWeeks.reduce((min, s) => Math.min(min, s.weeks[i]?.startMs ?? Infinity), Infinity) })),
-        )
-      : { index: 0, kind: 'current' };
+    const { index } = findAcomodadoresWeekIndex(
+      acoState.weeks.map(i => ({ startMs: sectionsWeeks.reduce((min, s) => Math.min(min, s.weeks[i]?.startMs ?? Infinity), Infinity) })),
+    );
     if (acoState.viewIndex >= totalWeeks || acoState.viewIndex < 0) acoState.viewIndex = 0;
     if (!acoState._navigated) {
       acoState.viewIndex = index >= 0 ? index : 0;
     }
 
     if (dom.acomodadoresNav) {
-      dom.acomodadoresNav.hidden = realWeeksCount <= 1;
+      dom.acomodadoresNav.hidden = totalWeeks <= 1;
       dom.acomodadoresPrevBtn.disabled = acoState.viewIndex <= 0;
       dom.acomodadoresNextBtn.disabled = acoState.viewIndex >= totalWeeks - 1;
       const currentWeek = sectionsWeeks[0]?.weeks[acoState.viewIndex];
@@ -719,7 +736,6 @@ async function renderPublicAcomodadores() {
       acomodadores: { icon: '👥', cls: 'sub-ac' },
       microfonos: { icon: '🎤', cls: 'sub-mic' },
       plataforma: { icon: '📋', cls: 'sub-plat' },
-      salidas_predicacion: { icon: '🚪', cls: 'sub-salidas' },
     };
 
     const dayMap = new Map();
@@ -739,28 +755,6 @@ async function renderPublicAcomodadores() {
           title: section.title,
           slotLabels: section.slotLabels,
           slots: entry.slots,
-          hour: entry.hour || '',
-          modality: entry.modality || '',
-        });
-      }
-    }
-
-    // Add salidas_predicacion entries directly (recurring weekly schedule)
-    if (salidasSection) {
-      for (const entry of salidasSection.entries) {
-        if (!dayMap.has(entry.weekday)) {
-          dayMap.set(entry.weekday, { weekday: entry.weekday, dates: {}, sections: [] });
-        }
-        const dayData = dayMap.get(entry.weekday);
-        const dateKey = `${entry.day}-${entry.month}`;
-        dayData.dates[dateKey] = (dayData.dates[dateKey] || 0) + 1;
-        dayData.sections.push({
-          id: salidasSection.id,
-          title: salidasSection.title,
-          slotLabels: salidasSection.slotLabels,
-          slots: entry.slots,
-          hour: entry.hour || '',
-          modality: entry.modality || '',
         });
       }
     }
@@ -772,7 +766,7 @@ async function renderPublicAcomodadores() {
       const [day, month] = (topDate || '01-ENERO').split('-');
       return { ...d, day, month };
     });
-    const dayOrder = { LUN: -1, MAR: 0, MIE: 1, JUE: 2, VIE: 3, SAB: 4, DOM: 5 };
+    const dayOrder = { MIE: 0, JUE: 1, VIE: 2, SAB: 3, DOM: 4 };
     days.sort((a, b) => (dayOrder[a.weekday] ?? 9) - (dayOrder[b.weekday] ?? 9));
 
     if (days.length === 0) {
@@ -786,13 +780,6 @@ async function renderPublicAcomodadores() {
       const dayClass = day.weekday === 'SAB' ? 'day-card-sab' : 'day-card-mie';
       const fullDay = weekdayFull[day.weekday] || day.weekday;
       const meeting = meetingType[day.weekday] || '';
-      const isRealDate = MONTHS_ES[day.month] !== undefined;
-      const dateBlockHtml = isRealDate ? `
-          <div class="day-date-block">
-            <span class="day-num">${day.day}</span>
-            <span class="day-mes">${day.month}</span>
-          </div>
-        ` : '';
 
       card.innerHTML = `
         <div class="day-header ${dayClass}">
@@ -800,7 +787,10 @@ async function renderPublicAcomodadores() {
             <span class="day-weekday">${fullDay}</span>
             <span class="day-meeting">${meeting}</span>
           </div>
-          ${dateBlockHtml}
+          <div class="day-date-block">
+            <span class="day-num">${day.day}</span>
+            <span class="day-mes">${day.month}</span>
+          </div>
         </div>
         <div class="day-body">
           ${day.sections.map(sec => {
@@ -811,13 +801,6 @@ async function renderPublicAcomodadores() {
               const name = sec.slots[i] || '';
               if (!name) return '';
               const labelHtml = label ? `<span class="person-slot-label">${label}</span>` : '';
-              // Special rendering for salidas_predicacion: show hour and modality
-              if (sec.id === 'salidas_predicacion') {
-                const hourHtml = sec.hour ? `<span class="salida-hour">${sec.hour}</span>` : '';
-                const modalityCls = sec.modality === 'Zoom' ? 'modality-zoom' : 'modality-presencial';
-                const modalityHtml = sec.modality ? `<span class="salida-modality ${modalityCls}">${sec.modality}</span>` : '';
-                return `<div class="person-slot salida-predicacion">${labelHtml}<span class="person-pill">${name}</span>${hourHtml}${modalityHtml}</div>`;
-              }
               return `<div class="person-slot">${labelHtml}<span class="person-pill">${name}</span></div>`;
             }).join('');
             return `
@@ -1093,6 +1076,246 @@ function setupInstallPrompt() {
   window.addEventListener('appinstalled', () => {
     dom.installPrompt.hidden = true;
   });
+}
+
+// ---------------------- Salidas de Predicación ----------------------
+
+const WEEKDAY_ORDER = { LUN: 0, MAR: 1, MIE: 2, JUE: 3, VIE: 4, SAB: 5, DOM: 6 };
+const WEEKDAY_FULL = { LUN: 'LUNES', MAR: 'MARTES', MIE: 'MIÉRCOLES', JUE: 'JUEVES', VIE: 'VIERNES', SAB: 'SÁBADO', DOM: 'DOMINGO' };
+
+async function renderPublicSalidas() {
+  const container = dom.salidasDefaultTables;
+  if (!container) return;
+  try {
+    const entries = await loadSalidasData();
+    if (!entries || entries.length === 0) {
+      container.innerHTML = '<p class="acomodadores-empty">Sin asignaciones de predicación.</p>';
+      return;
+    }
+
+    const sorted = [...entries].sort((a, b) => (WEEKDAY_ORDER[a.weekday] ?? 9) - (WEEKDAY_ORDER[b.weekday] ?? 9));
+
+    container.innerHTML = '';
+    const card = document.createElement('div');
+    card.className = 'acomodadores-day-card';
+
+    let rowsHtml = '';
+    for (const entry of sorted) {
+      const day = WEEKDAY_FULL[entry.weekday] || entry.weekday;
+      const modalityCls = entry.modality === 'Zoom' ? 'modality-zoom' : 'modality-presencial';
+      rowsHtml += `
+        <div class="salida-row">
+          <span class="salida-day">${day}</span>
+          <span class="salida-hour">${entry.hour || ''}</span>
+          <span class="salida-modality ${modalityCls}">${entry.modality || ''}</span>
+          <span class="person-pill">${entry.captain || ''}</span>
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="day-header day-card-salidas">
+        <div class="day-header-left">
+          <span class="day-weekday">SALIDAS DE PREDICACIÓN</span>
+          <span class="day-meeting">Horario semanal</span>
+        </div>
+      </div>
+      <div class="day-body salidas-body">
+        ${rowsHtml}
+      </div>
+    `;
+    container.appendChild(card);
+  } catch {
+    container.innerHTML = '';
+  }
+}
+
+let pendingSalidasData = null;
+
+function renderSalidasEditor(entries) {
+  const container = dom.salidasEditor;
+  container.innerHTML = '';
+
+  for (let i = 0; i < entries.length; i++) {
+    const e = entries[i];
+    const row = document.createElement('div');
+    row.className = 'admin-entry-row';
+    row.innerHTML = `
+      <input class="admin-entry-field" data-index="${i}" data-field="weekday" type="text" value="${e.weekday}" placeholder="Día" maxlength="3" style="width:4rem" />
+      <input class="admin-entry-field" data-index="${i}" data-field="hour" type="text" value="${e.hour || ''}" placeholder="Hora" style="width:6rem" />
+      <input class="admin-entry-field" data-index="${i}" data-field="modality" type="text" value="${e.modality || ''}" placeholder="Modalidad" style="width:6rem" />
+      <input class="admin-entry-field" data-index="${i}" data-field="captain" type="text" value="${e.captain || ''}" placeholder="Capitán" style="flex:1" />
+      <button type="button" class="admin-delete-entry danger-btn" data-index="${i}" style="padding:0.3rem 0.6rem;font-size:0.75rem">X</button>
+    `;
+    container.appendChild(row);
+  }
+
+  container.querySelectorAll('.admin-delete-entry').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = parseInt(btn.dataset.index, 10);
+      entries.splice(idx, 1);
+      renderSalidasEditor(entries);
+    });
+  });
+
+  container.querySelectorAll('.admin-entry-field').forEach(input => {
+    input.addEventListener('change', () => {
+      const idx = parseInt(input.dataset.index, 10);
+      const field = input.dataset.field;
+      entries[idx][field] = input.value;
+    });
+  });
+}
+
+function parseSalidasText(lines) {
+  const weekdays = ['LUNES','MARTES','MIERCOLES','MIÉRCOLES','JUEVES','VIERNES','SABADO','SÁBADO','DOMINGO'];
+  const weekdayToCode = { LUNES:'LUN', MARTES:'MAR', MIERCOLES:'MIE', MIÉRCOLES:'MIE', JUEVES:'JUE', VIERNES:'VIE', SABADO:'SAB', SÁBADO:'SAB', DOMINGO:'DOM' };
+
+  const entries = [];
+  for (const line of lines) {
+    const upper = line.toUpperCase().trim();
+    if (!upper) continue;
+
+    let matchedDay = null;
+    for (const wd of weekdays) {
+      if (upper.includes(wd)) { matchedDay = wd; break; }
+    }
+    if (!matchedDay) continue;
+
+    const hourMatch = upper.match(/(\d{1,2}:\d{2}\s*(?:A\.M\.|P\.M\.))/i);
+    const hour = hourMatch ? hourMatch[1] : '';
+
+    let modality = '';
+    if (upper.includes('PRESENCIAL')) modality = 'Presencial';
+    else if (upper.includes('ZOOM')) modality = 'Zoom';
+
+    let captainLine = upper;
+    for (const wd of weekdays) captainLine = captainLine.replace(new RegExp('\\b' + wd + '\\b', 'g'), '');
+    captainLine = captainLine.replace(/\d{1,2}:\d{2}\s*(?:A\.M\.|P\.M\.)/gi, '');
+    captainLine = captainLine.replace(/PRESENCIAL|ZOOM/gi, '');
+    captainLine = captainLine.replace(/\bDE\b/g, '').trim();
+    const captain = captainLine.split(/\s*[-–—|]+\s*|\s{2,}/)
+      .map(s => s.trim())
+      .filter(s => s.length > 1 && !/^\d+$/.test(s))
+      .join(' ')
+      .trim();
+
+    if (matchedDay) {
+      entries.push({
+        weekday: weekdayToCode[matchedDay],
+        hour,
+        modality,
+        captain: captain || '',
+      });
+    }
+  }
+  return entries;
+}
+
+async function onSalidasUpload(e) {
+  e.preventDefault();
+  dom.salidasUploadError.hidden = true;
+  dom.salidasOcrStatus.hidden = false;
+  dom.salidasOcrProgressText.textContent = 'Leyendo PDF...';
+
+  const file = dom.salidasFileInput.files?.[0];
+  if (!file) {
+    dom.salidasUploadError.textContent = 'Seleccione un archivo PDF.';
+    dom.salidasUploadError.hidden = false;
+    dom.salidasOcrStatus.hidden = true;
+    return;
+  }
+
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = new URL('../vendor/pdf.worker.min.mjs', import.meta.url).href;
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer.slice(0) }).promise;
+
+    const allLines = [];
+    for (let p = 1; p <= pdf.numPages; p++) {
+      dom.salidasOcrProgressText.textContent = `Leyendo página ${p} de ${pdf.numPages}...`;
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const buckets = new Map();
+      for (const item of content.items) {
+        if (!item.str || !item.transform) continue;
+        const x = item.transform[4];
+        const y = item.transform[5];
+        const key = Math.round(y);
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push({ x, str: item.str });
+      }
+      const sortedKeys = [...buckets.keys()].sort((a, b) => b - a);
+      const merged = [];
+      for (const k of sortedKeys) {
+        if (merged.length && Math.abs(merged[merged.length - 1].key - k) <= 3) {
+          merged[merged.length - 1].items.push(...buckets.get(k));
+        } else {
+          merged.push({ key: k, items: [...buckets.get(k)] });
+        }
+      }
+      for (const row of merged) {
+        row.items.sort((a, b) => a.x - b.x);
+        const line = row.items.map(it => it.str).join('  ').trim();
+        if (line) allLines.push(line);
+      }
+    }
+
+    const rawText = allLines.join('\n');
+    const parsed = parseSalidasText(allLines);
+    pendingSalidasData = parsed;
+    renderSalidasEditor(parsed);
+    dom.salidasOcrStatus.hidden = true;
+    dom.salidasOcrResult.hidden = false;
+  } catch (err) {
+    console.error(err);
+    dom.salidasUploadError.textContent = 'No se pudo leer el PDF. Intente con otro archivo.';
+    dom.salidasUploadError.hidden = false;
+    dom.salidasOcrStatus.hidden = true;
+  }
+}
+
+async function onSalidasSave() {
+  if (!pendingSalidasData) return;
+  try {
+    await saveSalidasData(pendingSalidasData);
+    dom.salidasOcrResult.hidden = true;
+    dom.salidasOcrProgressText.textContent = 'Datos guardados y publicados.';
+    dom.salidasOcrStatus.hidden = false;
+    dom.salidasOcrStatus.classList.add('success');
+    pendingSalidasData = null;
+    await renderPublicSalidas();
+  } catch (err) {
+    dom.salidasUploadError.textContent = err?.message || 'No se pudo guardar.';
+    dom.salidasUploadError.hidden = false;
+  }
+}
+
+async function onSalidasClear() {
+  if (!confirm('¿Borrar todos los datos de salidas de predicación?')) return;
+  try {
+    await clearSalidasData();
+    dom.salidasOcrResult.hidden = true;
+    dom.salidasOcrStatus.hidden = true;
+    dom.salidasEditor.innerHTML = '';
+    pendingSalidasData = null;
+    await renderPublicSalidas();
+  } catch (err) {
+    dom.salidasUploadError.textContent = err?.message || 'No se pudo borrar.';
+    dom.salidasUploadError.hidden = false;
+  }
+}
+
+async function loadAdminSalidasPreview() {
+  if (!firebaseConfigured()) return;
+  try {
+    const entries = await loadSalidasData();
+    pendingSalidasData = entries;
+    renderSalidasEditor(entries);
+    dom.salidasOcrResult.hidden = false;
+  } catch {
+    dom.salidasOcrResult.hidden = true;
+  }
 }
 
 init().catch((err) => {

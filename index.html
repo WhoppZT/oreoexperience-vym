@@ -26,6 +26,7 @@
     <nav id="section-tabs" class="section-tabs">
       <button class="tab-btn active" data-tab="asignaciones" type="button">Asignaciones</button>
       <button class="tab-btn" data-tab="acomodadores" type="button">Acomodadores</button>
+      <button class="tab-btn" data-tab="salidas" type="button">Salidas de Predicación</button>
     </nav>
 
     <main class="container">
@@ -78,6 +79,13 @@
         </section>
       </div>
 
+      <!-- Pestaña Salidas de Predicación -->
+      <div id="tab-salidas" class="tab-content" hidden>
+        <section class="acomodadores-section">
+          <div id="salidas-default-tables"></div>
+        </section>
+      </div>
+
       <section id="install-prompt" class="install-prompt" hidden>
         <p>
           Puede instalar esta página como una aplicación en su dispositivo para usarla sin internet.
@@ -122,6 +130,7 @@
           <nav class="admin-tabs">
             <button class="admin-tab-btn active" data-admin-tab="asignaciones" type="button">Asignaciones</button>
             <button class="admin-tab-btn" data-admin-tab="acomodadores" type="button">Acomodadores</button>
+            <button class="admin-tab-btn" data-admin-tab="salidas" type="button">Salidas</button>
           </nav>
 
           <!-- Admin: Asignaciones -->
@@ -178,6 +187,36 @@
               <div id="acomodadores-editor"></div>
               <div class="form-actions" style="margin-top:1rem">
                 <button id="acomodadores-save-btn" type="button" class="primary-btn">Guardar cambios</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Admin: Salidas de Predicación -->
+          <div id="admin-tab-salidas" class="admin-tab-content" hidden>
+            <p>Suba el PDF del cronograma de salidas de predicación. El sistema leerá los días, horas y nombres automáticamente.</p>
+
+            <form id="salidas-upload-form">
+              <label for="salidas-file" class="file-label">
+                <span>Seleccione archivo PDF</span>
+                <input id="salidas-file" type="file" accept="application/pdf" required />
+              </label>
+
+              <div id="salidas-ocr-status" class="upload-status" hidden>
+                <span id="salidas-ocr-progress-text">Procesando...</span>
+              </div>
+              <p id="salidas-upload-error" class="form-error" hidden></p>
+
+              <div class="form-actions">
+                <button type="submit" class="primary-btn">Leer y guardar</button>
+                <button id="salidas-clear-btn" type="button" class="danger-btn">Borrar datos</button>
+              </div>
+            </form>
+
+            <div id="salidas-ocr-result" class="acomodadores-preview" hidden>
+              <h3>Datos detectados (puede editar antes de guardar)</h3>
+              <div id="salidas-editor"></div>
+              <div class="form-actions" style="margin-top:1rem">
+                <button id="salidas-save-btn" type="button" class="primary-btn">Guardar cambios</button>
               </div>
             </div>
           </div>

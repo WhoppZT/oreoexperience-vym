@@ -1317,6 +1317,49 @@ button:active {
   background: linear-gradient(135deg, #b45309 0%, #78350f 100%);
 }
 
+.day-card-salidas {
+  background: linear-gradient(135deg, #059669 0%, #065f46 100%);
+}
+
+.salidas-body {
+  padding: 0;
+}
+
+.salida-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 1fr 1.5fr auto;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.salida-row:last-child {
+  border-bottom: none;
+}
+
+.salida-day {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.salida-hour {
+  font-size: 0.9rem;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.salida-modality {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+}
+
 .day-body {
   padding: 0.85rem;
   display: flex;
@@ -1492,6 +1535,12 @@ button:active {
 
   .day-body {
     padding: 0.65rem;
+  }
+
+  .salida-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.3rem;
+    padding: 0.6rem 0.75rem;
   }
 
   .day-section {
