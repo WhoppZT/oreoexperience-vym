@@ -72,9 +72,14 @@
       <div id="tab-acomodadores" class="tab-content" hidden>
         <section class="acomodadores-section">
 
-          <!-- Imagen subida por admin -->
           <!-- Tablas dinámicas (se llenan desde Firestore) -->
           <div id="acomodadores-default-tables"></div>
+
+          <nav id="acomodadores-nav" class="acomodadores-nav week-nav" hidden>
+            <button id="acomodadores-prev-btn" class="nav-btn" type="button">◀ Semana anterior</button>
+            <span id="acomodadores-position" class="week-position"></span>
+            <button id="acomodadores-next-btn" class="nav-btn" type="button">Semana siguiente ▶</button>
+          </nav>
 
         </section>
       </div>
