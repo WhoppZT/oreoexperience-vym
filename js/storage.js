@@ -294,7 +294,13 @@ export async function loadAcomodadoresData() {
   try {
     const snap = await getDoc(doc(fs, FS_ACOMODADORES_COLLECTION, FS_ACOMODADORES_DOC));
     if (snap.exists() && snap.data()?.sections) {
-      return { sections: snap.data().sections };
+      const sections = snap.data().sections;
+      const hasSalidas = sections.some(s => s.id === 'salidas_predicacion');
+      if (!hasSalidas) {
+        const defaultSalidas = DEFAULT_ACOMODADORES.sections.find(s => s.id === 'salidas_predicacion');
+        if (defaultSalidas) sections.push(defaultSalidas);
+      }
+      return { sections };
     }
   } catch (err) {
     console.warn('Error loading acomodadores data:', err);
