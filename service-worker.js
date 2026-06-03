@@ -1,6 +1,6 @@
 // Simple offline cache for the Asignaciones Vida y Ministerio PWA.
 
-const CACHE_VERSION = 'v41';
+const CACHE_VERSION = 'v42';
 const CACHE_NAME = `asignaciones-vym-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
@@ -45,40 +45,22 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Network-first for ALL resources: always try the network first,
+// fall back to cache only when offline. This ensures users always
+// get the latest version when they have internet.
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML and CSS (always fresh)
-  if (request.headers.get('accept')?.includes('text/html') || url.pathname.endsWith('.css')) {
-    event.respondWith(
-      fetch(new Request(request, { cache: 'reload' }))
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
-        })
-        .catch(() => caches.match(request).then((c) => c || new Response('', { status: 504 }))),
-    );
-    return;
-  }
-
-  // Cache-first for everything else (styles, scripts, images)
   event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request)
-        .then((response) => {
-          if (response && response.status === 200 && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => new Response('', { status: 504, statusText: 'Offline' }));
-    }),
+    fetch(new Request(request, { cache: 'reload' }))
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        return response;
+      })
+      .catch(() => caches.match(request).then((c) => c || new Response('Offline', { status: 504 }))),
   );
 });
