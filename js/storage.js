@@ -257,6 +257,23 @@ const DEFAULT_ACOMODADORES = {
         { day: '27', month: 'JUNIO', weekday: 'SAB', slots: ['JESUS MARCILLO'] },
       ],
     },
+    {
+      id: 'salidas_predicacion',
+      title: 'Salidas de Predicación',
+      slotLabels: ['Capitán'],
+      entries: [
+        { day: '01', month: 'LUNES', weekday: 'LUN', hour: '4:00 p.m.', modality: 'Presencial', slots: ['Ramiro Rincón'] },
+        { day: '02', month: 'MARTES', weekday: 'MAR', hour: '4:00 p.m.', modality: 'Presencial', slots: ['Carlos Rueda'] },
+        { day: '02', month: 'MARTES', weekday: 'MAR', hour: '7:00 p.m.', modality: 'Presencial', slots: ['Jhon Martínez'] },
+        { day: '03', month: 'MIÉRCOLES', weekday: 'MIE', hour: '8:30 a.m.', modality: 'Presencial', slots: ['Hector Sierra'] },
+        { day: '04', month: 'JUEVES', weekday: 'JUE', hour: '9:00 a.m.', modality: 'Presencial', slots: ['Pedro Duarte'] },
+        { day: '04', month: 'JUEVES', weekday: 'JUE', hour: '4:00 p.m.', modality: 'Presencial', slots: ['Carlos León'] },
+        { day: '05', month: 'VIERNES', weekday: 'VIE', hour: '4:00 p.m.', modality: 'Presencial', slots: ['Jesús Marcillo'] },
+        { day: '05', month: 'VIERNES', weekday: 'VIE', hour: '7:00 p.m.', modality: 'Zoom', slots: ['Elihú Rueda'] },
+        { day: '06', month: 'SÁBADO', weekday: 'SAB', hour: '9:00 a.m.', modality: 'Presencial', slots: ['Jesús Torres'] },
+        { day: '07', month: 'DOMINGO', weekday: 'DOM', hour: '9:00 a.m.', modality: 'Presencial', slots: ['Ramiro Andrés'] },
+      ],
+    },
   ],
 };
 

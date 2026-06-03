@@ -311,6 +311,7 @@ function parseAcomodadoresText(lines) {
     { id: 'acomodadores', title: 'Acomodadores', slotLabels: ['Parqueadero', 'Entrada'], entries: [] },
     { id: 'microfonos', title: 'Microfonos', slotLabels: ['Asignado 1', 'Asignado 2'], entries: [] },
     { id: 'plataforma', title: 'Plataforma', slotLabels: ['Asignado'], entries: [] },
+    { id: 'salidas_predicacion', title: 'Salidas de Predicación', slotLabels: ['Capitán'], entries: [] },
   ];
 
   let currentSection = null;
@@ -395,7 +396,59 @@ function parseAcomodadoresText(lines) {
     if (upper.includes('ACOMODADOR')) { currentSection = sections[0]; lastEntry = null; continue; }
     if (upper.includes('MICROFONO') || upper.includes('MICRÓFONO')) { currentSection = sections[1]; lastEntry = null; continue; }
     if (upper.includes('PLATAFORMA')) { currentSection = sections[2]; lastEntry = null; continue; }
+    if (upper.includes('SALIDAS') && upper.includes('PREDICACION') || upper.includes('PREDICACIÓN')) { currentSection = sections[3]; lastEntry = null; continue; }
     if (!currentSection) continue;
+
+    // Special handling for salidas_predicacion section (table format)
+    if (currentSection.id === 'salidas_predicacion') {
+      const weekday = detectWeekday(upper);
+      if (!weekday) continue;
+
+      // Extract hour (e.g., "4:00 p.m.", "9:00 a.m.")
+      const hourMatch = upper.match(/(\d{1,2}:\d{2}\s*(?:a\.m\.|p\.m\.))/i);
+      const hour = hourMatch ? hourMatch[1] : '';
+
+      // Extract modality (Presencial/Zoom)
+      let modality = '';
+      if (upper.includes('PRESENCIAL')) modality = 'Presencial';
+      else if (upper.includes('ZOOM')) modality = 'Zoom';
+
+      // Extract captain name (remaining text after removing day/hour/modality)
+      let captainLine = upper;
+      // Remove weekday names
+      for (const wd of ['LUNES','MARTES','MIERCOLES','MIÉRCOLES','JUEVES','VIERNES','SABADO','SÁBADO','DOMINGO']) {
+        captainLine = captainLine.replace(new RegExp('\\b' + wd + '\\b', 'g'), '');
+      }
+      // Remove hour patterns
+      captainLine = captainLine.replace(/\d{1,2}:\d{2}\s*(?:A\.M\.|P\.M\.)/gi, '');
+      // Remove modality
+      captainLine = captainLine.replace(/PRESENCIAL|ZOOM/gi, '');
+      // Remove common stop words and clean
+      captainLine = captainLine.replace(/\bDE\b/g, '').trim();
+      // Extract names
+      const captainNames = captainLine.split(/\s*[-–—|]+\s*|\s{2,}/)
+        .map(s => s.trim())
+        .filter(s => s.length > 1 && !/^\d+$/.test(s) && !stopWords.has(s));
+
+      if (weekday && (hour || captainNames.length > 0)) {
+        const dayNum = weekday === 'LUN' ? '01' : weekday === 'MAR' ? '02' : weekday === 'MIE' ? '03' :
+                       weekday === 'JUE' ? '04' : weekday === 'VIE' ? '05' : weekday === 'SAB' ? '06' : '07';
+        const monthNames = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+        const month = monthNames[new Date().getMonth()];
+
+        const newEntry = {
+          day: dayNum,
+          month,
+          weekday,
+          hour,
+          modality,
+          slots: captainNames.slice(0, 1) || [''],
+        };
+        currentSection.entries.push(newEntry);
+        lastEntry = newEntry;
+      }
+      continue;
+    }
 
     const month = detectMonth(upper);
     const weekday = detectWeekday(upper);
@@ -656,6 +709,7 @@ async function renderPublicAcomodadores() {
       acomodadores: { icon: '👥', cls: 'sub-ac' },
       microfonos: { icon: '🎤', cls: 'sub-mic' },
       plataforma: { icon: '📋', cls: 'sub-plat' },
+      salidas_predicacion: { icon: '🚪', cls: 'sub-salidas' },
     };
 
     const dayMap = new Map();
@@ -675,6 +729,8 @@ async function renderPublicAcomodadores() {
           title: section.title,
           slotLabels: section.slotLabels,
           slots: entry.slots,
+          hour: entry.hour || '',
+          modality: entry.modality || '',
         });
       }
     }
@@ -721,6 +777,13 @@ async function renderPublicAcomodadores() {
               const name = sec.slots[i] || '';
               if (!name) return '';
               const labelHtml = label ? `<span class="person-slot-label">${label}</span>` : '';
+              // Special rendering for salidas_predicacion: show hour and modality
+              if (sec.id === 'salidas_predicacion') {
+                const hourHtml = sec.hour ? `<span class="salida-hour">${sec.hour}</span>` : '';
+                const modalityCls = sec.modality === 'Zoom' ? 'modality-zoom' : 'modality-presencial';
+                const modalityHtml = sec.modality ? `<span class="salida-modality ${modalityCls}">${sec.modality}</span>` : '';
+                return `<div class="person-slot salida-predicacion">${labelHtml}<span class="person-pill">${name}</span>${hourHtml}${modalityHtml}</div>`;
+              }
               return `<div class="person-slot">${labelHtml}<span class="person-pill">${name}</span></div>`;
             }).join('');
             return `

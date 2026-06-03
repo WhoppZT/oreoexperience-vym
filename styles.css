@@ -1346,6 +1346,11 @@ button:active {
   background: linear-gradient(90deg, rgba(163, 92, 28, 0.06) 0%, var(--color-bg-soft) 100%);
 }
 
+.day-section.sub-salidas {
+  border-left-color: #059669;
+  background: linear-gradient(90deg, rgba(5, 150, 105, 0.06) 0%, var(--color-bg-soft) 100%);
+}
+
 .day-section-header {
   display: flex;
   align-items: center;
@@ -1407,6 +1412,47 @@ button:active {
   border-radius: var(--radius-pill);
   border: 1px solid rgba(109, 40, 217, 0.16);
   white-space: nowrap;
+}
+
+/* Salidas de Predicación styles */
+.salida-predicacion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.salida-hour {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(59, 46, 126, 0.16);
+}
+
+.salida-modality {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-pill);
+}
+
+.modality-presencial {
+  color: #059669;
+  background: rgba(5, 150, 105, 0.1);
+  border: 1px solid rgba(5, 150, 105, 0.2);
+}
+
+.modality-zoom {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
+  border: 1px solid rgba(37, 99, 235, 0.2);
 }
 
 /* Responsive: tablet */
