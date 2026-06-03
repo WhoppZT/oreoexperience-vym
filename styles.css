@@ -1117,11 +1117,13 @@ button:active {
 
   .section-tabs {
     padding: 1rem 0.85rem 0;
+    gap: 0.35rem;
   }
 
   .tab-btn {
-    padding: 0.6rem 1rem;
-    font-size: 0.9rem;
+    padding: 0.6rem 0.5rem;
+    font-size: 0.82rem;
+    max-width: none;
   }
 
   .acomodadores-icon {
@@ -1179,17 +1181,11 @@ button:active {
   padding: 1.25rem 1.25rem 0;
   max-width: 980px;
   margin: 0 auto;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-.section-tabs::-webkit-scrollbar {
-  display: none;
 }
 
 .tab-btn {
-  flex: 0 0 auto;
+  flex: 1;
+  max-width: 220px;
   padding: 0.75rem 1.5rem;
   border: 2px solid var(--color-border-strong);
   border-bottom: none;
