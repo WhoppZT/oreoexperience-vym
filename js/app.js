@@ -89,6 +89,7 @@ async function init() {
   attachListeners();
   registerServiceWorker();
   setupInstallPrompt();
+  setupZoom();
   dom.statusBar.textContent = formatTodayLabel();
   if (firebaseConfigured()) {
     watchAuthState().catch(() => {});
@@ -1076,6 +1077,41 @@ function setupInstallPrompt() {
   window.addEventListener('appinstalled', () => {
     dom.installPrompt.hidden = true;
   });
+}
+
+function setupZoom() {
+  const zoomInBtn = document.getElementById('zoom-in-btn');
+  const zoomOutBtn = document.getElementById('zoom-out-btn');
+  const zoomLevel = document.getElementById('zoom-level');
+  if (!zoomInBtn || !zoomOutBtn || !zoomLevel) return;
+
+  const MIN_ZOOM = 70;
+  const MAX_ZOOM = 150;
+  const STEP = 10;
+
+  let currentZoom = parseInt(localStorage.getItem('zoom-level') || '100', 10);
+
+  function applyZoom() {
+    document.documentElement.style.fontSize = `${currentZoom * 0.2}px`;
+    zoomLevel.textContent = `${currentZoom}%`;
+    localStorage.setItem('zoom-level', currentZoom);
+  }
+
+  zoomInBtn.addEventListener('click', () => {
+    if (currentZoom < MAX_ZOOM) {
+      currentZoom += STEP;
+      applyZoom();
+    }
+  });
+
+  zoomOutBtn.addEventListener('click', () => {
+    if (currentZoom > MIN_ZOOM) {
+      currentZoom -= STEP;
+      applyZoom();
+    }
+  });
+
+  applyZoom();
 }
 
 // ---------------------- Salidas de Predicación ----------------------

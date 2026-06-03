@@ -24,13 +24,19 @@
     </header>
 
     <nav id="section-tabs" class="section-tabs">
-      <button class="tab-btn active" data-tab="asignaciones" type="button">Asignaciones</button>
-      <button class="tab-btn" data-tab="acomodadores" type="button">Acomodadores</button>
-      <button class="tab-btn" data-tab="salidas" type="button">Salidas de Predicación</button>
+      <button class="tab-btn active" data-tab="asignaciones" type="button">📋 Asignaciones</button>
+      <button class="tab-btn" data-tab="acomodadores" type="button">👥 Acomodadores</button>
+      <button class="tab-btn" data-tab="salidas" type="button">🚪 Salidas</button>
     </nav>
 
     <main class="container">
       <section id="status-bar" class="status-bar" aria-live="polite"></section>
+
+      <div class="zoom-controls">
+        <button id="zoom-out-btn" class="zoom-btn" type="button" aria-label="Disminuir zoom">−</button>
+        <span id="zoom-level" class="zoom-level">100%</span>
+        <button id="zoom-in-btn" class="zoom-btn" type="button" aria-label="Ampliar zoom">+</button>
+      </div>
 
       <!-- Pestaña Asignaciones -->
       <div id="tab-asignaciones" class="tab-content active">

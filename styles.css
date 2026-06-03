@@ -1116,13 +1116,28 @@ button:active {
   }
 
   .section-tabs {
-    padding: 1rem 0.5rem 0;
-    gap: 0.25rem;
+    padding: 0.75rem 0.5rem 0;
+    gap: 0.3rem;
   }
 
   .tab-btn {
-    padding: 0.6rem 0.3rem;
+    padding: 0.5rem 0.3rem;
     font-size: 0.75rem;
+  }
+
+  .zoom-controls {
+    padding: 0 0.5rem;
+  }
+
+  .zoom-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+  }
+
+  .zoom-level {
+    font-size: 0.8rem;
+    min-width: 2.5rem;
   }
 
   .acomodadores-icon {
@@ -1175,10 +1190,91 @@ button:active {
 /* Section tabs */
 .section-tabs {
   display: flex;
-  gap: 0.5rem;
-  padding: 1.25rem 1rem 0;
+  gap: 0.4rem;
+  padding: 1rem 1rem 0;
   max-width: 980px;
   margin: 0 auto;
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 0.65rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-muted);
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-btn:hover {
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.tab-btn.active {
+  background: var(--color-primary);
+  color: var(--color-on-primary);
+  border-color: var(--color-primary);
+}
+
+.tab-content {
+  border-top: 2px solid var(--color-primary);
+  padding-top: 0.5rem;
+}
+
+/* Zoom controls */
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin: 0.75rem auto 0;
+  max-width: 980px;
+  padding: 0 1rem;
+}
+
+.zoom-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.zoom-btn:hover {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.zoom-btn:active {
+  transform: scale(0.95);
+}
+
+.zoom-level {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-muted);
+  min-width: 3rem;
+  text-align: center;
 }
 
 .tab-btn {
